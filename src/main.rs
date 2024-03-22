@@ -20,6 +20,7 @@ async fn main() -> Result<(), Error> {
     let rocket_config = RocketConfig {
         address: config.address,
         port: config.port,
+        cli_colors: config.cli_colors,
         ..Default::default()
     };
 
