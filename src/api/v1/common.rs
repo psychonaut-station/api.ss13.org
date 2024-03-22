@@ -5,7 +5,9 @@ use rocket::{
 };
 use serde::Serialize;
 use serde_json::json;
-use std::io::Cursor;
+use std::{io::Cursor, time::SystemTime};
+
+use super::server::Status;
 
 #[allow(dead_code)]
 #[derive(Debug, Serialize)]
@@ -37,4 +39,15 @@ impl<R: Serialize> Responder<'_, 'static> for GenericResponse<R> {
             .sized_body(json.len(), Cursor::new(json))
             .ok()
     }
+}
+
+#[derive(Debug, Default)]
+pub struct Cache {
+    pub server: Option<CacheEntry<Vec<Status>>>,
+}
+
+#[derive(Debug)]
+pub struct CacheEntry<T> {
+    pub data: T,
+    pub expires: SystemTime,
 }
