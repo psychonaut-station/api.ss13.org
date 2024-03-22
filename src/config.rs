@@ -7,6 +7,7 @@ pub struct Config {
     pub address: IpAddr,
     pub port: u16,
     pub secret: String,
+    pub cli_colors: bool,
     pub servers: Vec<Server>,
 }
 
