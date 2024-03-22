@@ -1,0 +1,15 @@
+address = "127.0.0.1"
+port = 3000
+secret = ""
+
+[[servers]]
+name = "Primary Station"
+address = "127.0.0.1:1337"
+connection_address = "12.34.567.89:1337"
+error_message = "Rebooting"
+
+[[servers]]
+name = "Secondary Station"
+address = "127.0.0.1:7331"
+connection_address = "98.76.543.2.1:7331"
+error_message = "Rebooting"

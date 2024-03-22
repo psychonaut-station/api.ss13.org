@@ -2,9 +2,12 @@ use rocket::{get, State};
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use crate::byond::{self, ServerStatus};
+use crate::{
+    byond::{self, ServerStatus},
+    config::{Config, Server},
+};
 
-use super::{GenericResponse, Server, Servers};
+use super::GenericResponse;
 
 #[derive(Debug, Serialize)]
 pub struct Status(Value);
@@ -33,11 +36,11 @@ impl Status {
 }
 
 #[get("/server")]
-pub async fn route(servers: &State<Servers>) -> GenericResponse<Vec<Status>> {
+pub async fn route(config: &State<Config>) -> GenericResponse<Vec<Status>> {
     let mut response = Vec::new();
 
-    for server in servers.0.iter() {
-        let status = byond::status(server.address).await.ok();
+    for server in config.servers.iter() {
+        let status = byond::status(&server.address).await.ok();
         response.push(Status::new(server, status));
     }
 

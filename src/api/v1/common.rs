@@ -38,14 +38,3 @@ impl<R: Serialize> Responder<'_, 'static> for GenericResponse<R> {
             .ok()
     }
 }
-
-#[derive(Debug)]
-pub struct Servers(pub Vec<Server>);
-
-#[derive(Debug)]
-pub struct Server {
-    pub name: &'static str,
-    pub address: &'static str,
-    pub connection_address: &'static str,
-    pub error_message: &'static str,
-}
