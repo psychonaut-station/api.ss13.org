@@ -1,5 +1,6 @@
 use rocket::{
-    http::ContentType,
+    http::{ContentType, Status},
+    request::{FromRequest, Outcome},
     response::{self, Responder, Response},
     Request,
 };
@@ -7,7 +8,9 @@ use serde::Serialize;
 use serde_json::json;
 use std::{io::Cursor, time::SystemTime};
 
-use super::server::Status;
+use crate::config::Config;
+
+use super::server::Status as ServerStatus;
 
 #[allow(dead_code)]
 #[derive(Debug, Serialize)]
@@ -43,11 +46,30 @@ impl<R: Serialize> Responder<'_, 'static> for GenericResponse<R> {
 
 #[derive(Debug, Default)]
 pub struct Cache {
-    pub server: Option<CacheEntry<Vec<Status>>>,
+    pub server: Option<CacheEntry<Vec<ServerStatus>>>,
 }
 
 #[derive(Debug)]
 pub struct CacheEntry<T> {
     pub data: T,
     pub expires: SystemTime,
+}
+
+pub struct ApiKey;
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for ApiKey {
+    type Error = ();
+
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        let Some(config) = request.rocket().state::<Config>() else {
+            return Outcome::Error((Status::InternalServerError, ()));
+        };
+
+        if request.headers().get_one("X-API-KEY") == Some(&config.secret) {
+            Outcome::Success(ApiKey)
+        } else {
+            Outcome::Error((Status::Unauthorized, ()))
+        }
+    }
 }

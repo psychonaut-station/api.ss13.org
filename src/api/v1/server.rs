@@ -41,7 +41,7 @@ impl Status {
 }
 
 #[get("/server")]
-pub async fn route(
+pub async fn index(
     config: &State<Config>,
     cache: &State<Arc<Mutex<Cache>>>,
 ) -> GenericResponse<Vec<Status>> {
@@ -53,14 +53,21 @@ pub async fn route(
         }
     }
 
+    let mut should_cache = false;
+
     let mut response = Vec::new();
 
     for server in config.servers.iter() {
         let status = byond::status(&server.address).await.ok();
+
+        if !should_cache && status.is_some() {
+            should_cache = true;
+        }
+
         response.push(Status::new(server, status));
     }
 
-    if !response.is_empty() {
+    if should_cache {
         cache.server = Some(CacheEntry {
             data: response.clone(),
             expires: SystemTime::now() + Duration::from_secs(30),
