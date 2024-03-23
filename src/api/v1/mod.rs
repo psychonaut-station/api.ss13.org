@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 mod common;
+mod player;
 mod server;
 
 pub use common::*;
@@ -12,5 +13,5 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
 
     rocket
         .manage(cache)
-        .mount("/v1", routes![self::server::route])
+        .mount("/v1", routes![self::server::index, self::player::index])
 }
