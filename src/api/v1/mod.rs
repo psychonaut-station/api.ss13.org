@@ -11,7 +11,8 @@ pub use common::*;
 pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
     let cache = Arc::new(Mutex::new(Cache::default()));
 
-    rocket
-        .manage(cache)
-        .mount("/v1", routes![server::index, player::index, player::top])
+    rocket.manage(cache).mount(
+        "/v1",
+        routes![server::index, player::index, player::top, player::ban],
+    )
 }
