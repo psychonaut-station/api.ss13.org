@@ -9,7 +9,7 @@ use tokio::sync::Mutex;
 
 use crate::{
     byond::{self, ServerStatus},
-    config::Server,
+    config::{Config, Server},
 };
 
 use super::{Cache, CacheEntry, GenericResponse};
@@ -42,7 +42,7 @@ impl Status {
 
 #[get("/server")]
 pub async fn index(
-    servers: &State<Vec<Server>>,
+    config: &State<Config>,
     cache: &State<Arc<Mutex<Cache>>>,
 ) -> GenericResponse<Vec<Status>> {
     let mut cache = cache.lock().await;
@@ -57,7 +57,7 @@ pub async fn index(
 
     let mut response = Vec::new();
 
-    for server in servers.iter() {
+    for server in config.servers.iter() {
         let status = byond::status(&server.address).await.ok();
 
         if !should_cache && status.is_some() {
