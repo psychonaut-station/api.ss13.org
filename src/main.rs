@@ -1,12 +1,12 @@
-use rocket::{get, http::Method, routes, Config as RocketConfig};
-use rocket_cors::{AllowedHeaders, AllowedOrigins, Cors, CorsOptions};
+use rocket::{get, routes, Config as RocketConfig};
 use thiserror::Error;
 
-use crate::{config::Config, database::Database};
+use crate::{config::Config, cors::cors, database::Database};
 
 mod api;
 mod byond;
 mod config;
+mod cors;
 mod database;
 
 #[get("/")]
@@ -38,25 +38,6 @@ async fn main() -> Result<(), Error> {
     rocket.launch().await?;
 
     Ok(())
-}
-
-fn cors() -> Result<Cors, rocket_cors::Error> {
-    let allowed_origins = AllowedOrigins::some_regex(&["^https?://.+"]);
-    let allowed_methods = vec![Method::Get].into_iter().map(From::from).collect();
-    let allowed_headers =
-        AllowedHeaders::some(&["Accept", "Authorization", "Content-Type", "X-CSRF-Token"]);
-    let expose_headers = vec!["Link".to_string()].into_iter().collect();
-
-    CorsOptions {
-        allowed_origins,
-        allowed_methods,
-        allowed_headers,
-        expose_headers,
-        allow_credentials: false,
-        max_age: Some(300),
-        ..Default::default()
-    }
-    .to_cors()
 }
 
 #[derive(Debug, Error)]
