@@ -1,3 +1,4 @@
+use rocket::config::LogLevel;
 use serde::Deserialize;
 use std::{fs::read_to_string, net::IpAddr};
 use thiserror::Error;
@@ -8,6 +9,7 @@ pub struct Config {
     pub port: u16,
     pub secret: String,
     pub cli_colors: bool,
+    pub log_level: LogLevel,
     pub database: Database,
     pub servers: Vec<Server>,
 }
