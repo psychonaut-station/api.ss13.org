@@ -1,4 +1,5 @@
 use rocket::{
+    catch,
     http::{ContentType, Status},
     request::{FromRequest, Outcome},
     response::{self, Responder, Response},
@@ -12,7 +13,6 @@ use crate::config::Config;
 
 use super::server::Status as ServerStatus;
 
-#[allow(dead_code)]
 #[derive(Debug, Serialize)]
 pub enum GenericResponse<R> {
     Success(R),
@@ -71,5 +71,15 @@ impl<'r> FromRequest<'r> for ApiKey {
         } else {
             Outcome::Error((Status::Unauthorized, ()))
         }
+    }
+}
+
+#[catch(default)]
+pub fn default_catcher(status: Status, _: &Request) -> GenericResponse<()> {
+    match status {
+        Status { code: 404 } => GenericResponse::Failure,
+        Status { code: 403 } => GenericResponse::Denied,
+        Status { code: 401 } => GenericResponse::BadAuth,
+        _ => GenericResponse::Failure,
     }
 }
