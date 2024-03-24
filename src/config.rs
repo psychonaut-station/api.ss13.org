@@ -8,7 +8,17 @@ pub struct Config {
     pub port: u16,
     pub secret: String,
     pub cli_colors: bool,
+    pub database: Database,
     pub servers: Vec<Server>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Database {
+    pub user: String,
+    pub password: String,
+    pub host: IpAddr,
+    pub port: u16,
+    pub database: String,
 }
 
 #[derive(Debug, Deserialize)]
