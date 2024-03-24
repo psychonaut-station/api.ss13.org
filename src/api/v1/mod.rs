@@ -13,5 +13,5 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
 
     rocket
         .manage(cache)
-        .mount("/v1", routes![self::server::index, self::player::index])
+        .mount("/v1", routes![server::index, player::index, player::top])
 }
