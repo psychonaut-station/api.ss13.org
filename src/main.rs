@@ -1,12 +1,13 @@
 use rocket::{get, http::Method, routes, Config as RocketConfig};
-use rocket_cors::{AllowedHeaders, AllowedOrigins, Cors, CorsOptions, Error as CorsError};
+use rocket_cors::{AllowedHeaders, AllowedOrigins, Cors, CorsOptions};
 use thiserror::Error;
 
-use crate::config::Config;
+use crate::{config::Config, database::Database};
 
 mod api;
 mod byond;
 mod config;
+mod database;
 
 #[get("/")]
 fn index() -> &'static str {
@@ -24,9 +25,12 @@ async fn main() -> Result<(), Error> {
         ..Default::default()
     };
 
+    let database = Database::new(&config.database)?;
+
     let rocket = rocket::custom(rocket_config)
         .attach(cors()?)
         .manage(config)
+        .manage(database)
         .mount("/", routes![index]);
 
     let rocket = api::mount(rocket);
@@ -36,7 +40,7 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-fn cors() -> Result<Cors, CorsError> {
+fn cors() -> Result<Cors, rocket_cors::Error> {
     let allowed_origins = AllowedOrigins::some_regex(&["^https?://.+"]);
     let allowed_methods = vec![Method::Get].into_iter().map(From::from).collect();
     let allowed_headers =
@@ -61,4 +65,5 @@ enum Error {
     Config(#[from] config::Error),
     Cors(#[from] rocket_cors::Error),
     Rocket(#[from] rocket::Error),
+    Sqlx(#[from] sqlx::Error),
 }
