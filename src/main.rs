@@ -1,4 +1,4 @@
-use rocket::Config as RocketConfig;
+use rocket::{catch, catchers, http::Status, Config as RocketConfig, Request};
 use thiserror::Error;
 
 use crate::{config::Config, cors::cors, database::Database};
@@ -25,7 +25,8 @@ async fn main() -> Result<(), Error> {
     let rocket = rocket::custom(provider)
         .attach(cors()?)
         .manage(config)
-        .manage(database);
+        .manage(database)
+        .register("/", catchers![empty_catcher]);
 
     let rocket = api::mount(rocket);
 
@@ -33,6 +34,9 @@ async fn main() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[catch(default)]
+fn empty_catcher(_: Status, _: &Request) {}
 
 #[derive(Debug, Error)]
 #[error(transparent)]
