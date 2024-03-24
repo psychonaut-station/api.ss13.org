@@ -107,6 +107,30 @@ pub async fn get_top_roletime(job: &str, pool: &MySqlPool) -> Result<Vec<Roletim
     Ok(roletimes)
 }
 
+pub async fn get_jobs(pool: &MySqlPool) -> Result<Vec<String>, Error> {
+    let mut connection = pool.acquire().await?;
+
+    let query = query("SELECT DISTINCT job FROM role_time ORDER BY job ASC");
+
+    let mut jobs = Vec::new();
+
+    {
+        let mut rows = connection.fetch(query);
+
+        while let Some(row) = rows.next().await {
+            let row = row?;
+
+            let job = row.try_get("job")?;
+
+            jobs.push(job);
+        }
+    }
+
+    connection.close().await?;
+
+    Ok(jobs)
+}
+
 #[derive(Debug)]
 pub struct Ban {
     pub id: u32,
