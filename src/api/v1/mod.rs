@@ -16,6 +16,12 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
         .register("/v1", catchers![common::default_catcher])
         .mount(
             "/v1",
-            routes![server::index, player::index, player::top, player::ban],
+            routes![
+                server::index,
+                player::index,
+                player::top,
+                player::ban,
+                player::jobs
+            ],
         )
 }
