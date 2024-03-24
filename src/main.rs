@@ -17,6 +17,7 @@ async fn main() -> Result<(), Error> {
         address: config.address,
         port: config.port,
         cli_colors: config.cli_colors,
+        log_level: config.log_level,
         ..Default::default()
     };
 
