@@ -13,7 +13,7 @@ mod database;
 async fn main() -> Result<(), Error> {
     let config = Config::load()?;
 
-    let rocket_config = RocketConfig {
+    let provider = RocketConfig {
         address: config.address,
         port: config.port,
         cli_colors: config.cli_colors,
@@ -22,7 +22,7 @@ async fn main() -> Result<(), Error> {
 
     let database = Database::new(&config.database)?;
 
-    let rocket = rocket::custom(rocket_config)
+    let rocket = rocket::custom(provider)
         .attach(cors()?)
         .manage(config)
         .manage(database);

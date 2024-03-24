@@ -1,6 +1,7 @@
 use rocket::futures::StreamExt as _;
-use serde::Serialize;
+use serde::{ser::SerializeStruct as _, Serialize, Serializer};
 use sqlx::{
+    query,
     types::chrono::{NaiveDate, NaiveDateTime},
     Executor as _, MySqlPool, Row as _,
 };
@@ -11,20 +12,42 @@ use super::error::Error;
 #[derive(Debug)]
 pub struct Player {
     pub ckey: String,
-    pub byond_key: String,
+    pub byond_key: Option<String>,
     pub first_seen: NaiveDateTime,
     pub last_seen: NaiveDateTime,
-    pub first_seen_round: u32,
-    pub last_seen_round: u32,
+    pub first_seen_round: Option<u32>,
+    pub last_seen_round: Option<u32>,
     pub ip: IpAddr,
     pub cid: String,
-    pub byond_age: NaiveDate,
+    pub byond_age: Option<NaiveDate>,
+}
+
+impl Serialize for Player {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Player", 9)?;
+        state.serialize_field("ckey", &self.ckey)?;
+        state.serialize_field("byond_key", &self.byond_key)?;
+        state.serialize_field("first_seen", &self.first_seen.to_string())?;
+        state.serialize_field("last_seen", &self.last_seen.to_string())?;
+        state.serialize_field("first_seen_round", &self.first_seen_round)?;
+        state.serialize_field("last_seen_round", &self.last_seen_round)?;
+        state.serialize_field("ip", &self.ip.to_string())?;
+        state.serialize_field("cid", &self.cid)?;
+        state.serialize_field(
+            "byond_age",
+            &self.byond_age.as_ref().map(ToString::to_string),
+        )?;
+        state.end()
+    }
 }
 
 pub async fn get_player(ckey: &str, pool: &MySqlPool) -> Result<Player, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = sqlx::query("SELECT ckey, byond_key, firstseen, firstseen_round_id, lastseen, lastseen_round_id, INET_NTOA(ip), computerid, accountjoindate FROM player WHERE LOWER(ckey) = ?");
+    let query = query("SELECT ckey, byond_key, firstseen, firstseen_round_id, lastseen, lastseen_round_id, INET_NTOA(ip), computerid, accountjoindate FROM player WHERE LOWER(ckey) = ?");
     let bound = query.bind(ckey.to_lowercase());
 
     let Ok(row) = connection.fetch_one(bound).await else {
@@ -57,7 +80,7 @@ pub struct Roletime {
 pub async fn get_top_roletime(job: &str, pool: &MySqlPool) -> Result<Vec<Roletime>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = sqlx::query(
+    let query = query(
         "SELECT ckey, minutes FROM role_time WHERE LOWER(job) = ? ORDER BY minutes DESC LIMIT 15",
     );
     let bound = query.bind(job.to_lowercase());
@@ -82,4 +105,96 @@ pub async fn get_top_roletime(job: &str, pool: &MySqlPool) -> Result<Vec<Roletim
     connection.close().await?;
 
     Ok(roletimes)
+}
+
+#[derive(Debug)]
+pub struct Ban {
+    pub id: u32,
+    pub bantime: NaiveDateTime,
+    pub round_id: Option<u32>,
+    pub role: Option<String>,
+    pub expiration_time: Option<NaiveDateTime>,
+    pub reason: String,
+    pub ckey: Option<String>,
+    pub a_ckey: String,
+    pub edits: Option<String>,
+    pub unbanned_datetime: Option<NaiveDateTime>,
+    pub unbanned_ckey: Option<String>,
+}
+
+impl Serialize for Ban {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Ban", 11)?;
+        state.serialize_field("id", &self.id)?;
+        state.serialize_field("bantime", &self.bantime.to_string())?;
+        state.serialize_field("round_id", &self.round_id)?;
+        state.serialize_field("role", &self.role)?;
+        state.serialize_field(
+            "expiration_time",
+            &self.expiration_time.as_ref().map(ToString::to_string),
+        )?;
+        state.serialize_field("reason", &self.reason)?;
+        state.serialize_field("ckey", &self.ckey)?;
+        state.serialize_field("a_ckey", &self.a_ckey)?;
+        state.serialize_field("edits", &self.edits)?;
+        state.serialize_field(
+            "unbanned_datetime",
+            &self.unbanned_datetime.as_ref().map(ToString::to_string),
+        )?;
+        state.serialize_field("unbanned_ckey", &self.unbanned_ckey)?;
+        state.end()
+    }
+}
+
+pub async fn get_ban(
+    ckey: Option<&str>,
+    id: Option<&str>,
+    pool: &MySqlPool,
+) -> Result<Vec<Ban>, Error> {
+    let mut connection = pool.acquire().await?;
+
+    let query = {
+        if let Some(ckey) = ckey {
+            query("SELECT id, bantime, round_id, role, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE LOWER(ckey) = ?")
+                .bind(ckey.to_lowercase())
+        } else if let Some(id) = id {
+            query("SELECT id, bantime, round_id, role, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE id = ?")
+                .bind(id)
+        } else {
+            return Err(Error::NoCkeyOrId);
+        }
+    };
+
+    let mut bans = Vec::new();
+
+    {
+        let mut rows = connection.fetch(query);
+
+        while let Some(row) = rows.next().await {
+            let ban = row?;
+
+            let ban = Ban {
+                id: ban.try_get("id")?,
+                bantime: ban.try_get("bantime")?,
+                round_id: ban.try_get("round_id")?,
+                role: ban.try_get("role")?,
+                expiration_time: ban.try_get("expiration_time")?,
+                reason: ban.try_get("reason")?,
+                ckey: ban.try_get("ckey")?,
+                a_ckey: ban.try_get("a_ckey")?,
+                edits: ban.try_get("edits")?,
+                unbanned_datetime: ban.try_get("unbanned_datetime")?,
+                unbanned_ckey: ban.try_get("unbanned_ckey")?,
+            };
+
+            bans.push(ban);
+        }
+    }
+
+    connection.close().await?;
+
+    Ok(bans)
 }

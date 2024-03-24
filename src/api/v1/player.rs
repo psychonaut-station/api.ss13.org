@@ -1,8 +1,9 @@
 use rocket::{get, http::Status, State};
-use serde_json::{json, Value};
 
 use crate::{
-    database::{error::Error as DatabaseError, get_player, get_top_roletime},
+    database::{
+        error::Error as DatabaseError, get_ban, get_player, get_top_roletime, Ban, Player, Roletime,
+    },
     Database,
 };
 
@@ -13,7 +14,7 @@ pub async fn index(
     ckey: &str,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<GenericResponse<Value>, Status> {
+) -> Result<GenericResponse<Player>, Status> {
     let player = match get_player(ckey, &database.pool).await {
         Ok(player) => player,
         Err(err) => match err {
@@ -22,17 +23,7 @@ pub async fn index(
         },
     };
 
-    Ok(GenericResponse::Success(json!({
-        "ckey": player.ckey,
-        "byond_key": player.byond_key,
-        "first_seen": player.first_seen.to_string(),
-        "last_seen": player.last_seen.to_string(),
-        "first_seen_round": player.first_seen_round,
-        "last_seen_round": player.last_seen_round,
-        "ip": player.ip,
-        "cid": player.cid,
-        "byond_age": player.byond_age.to_string(),
-    })))
+    Ok(GenericResponse::Success(player))
 }
 
 #[get("/player/top?<job>")]
@@ -40,11 +31,28 @@ pub async fn top(
     job: &str,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<GenericResponse<Value>, Status> {
-    let roletimes = match get_top_roletime(job, &database.pool).await {
-        Ok(roletimes) => roletimes,
-        Err(_) => return Err(Status::InternalServerError),
+) -> Result<GenericResponse<Vec<Roletime>>, Status> {
+    let Ok(roletimes) = get_top_roletime(job, &database.pool).await else {
+        return Err(Status::InternalServerError);
     };
 
-    Ok(GenericResponse::Success(json!(roletimes)))
+    Ok(GenericResponse::Success(roletimes))
+}
+
+#[get("/player/ban?<ckey>&<id>")]
+pub async fn ban(
+    ckey: Option<&str>,
+    id: Option<&str>,
+    database: &State<Database>,
+    _api_key: ApiKey,
+) -> Result<GenericResponse<Vec<Ban>>, Status> {
+    if ckey.is_some() ^ id.is_none() {
+        return Err(Status::BadRequest);
+    }
+
+    let Ok(bans) = get_ban(ckey, id, &database.pool).await else {
+        return Err(Status::InternalServerError);
+    };
+
+    Ok(GenericResponse::Success(bans))
 }
