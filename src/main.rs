@@ -1,4 +1,4 @@
-use rocket::{get, routes, Config as RocketConfig};
+use rocket::Config as RocketConfig;
 use thiserror::Error;
 
 use crate::{config::Config, cors::cors, database::Database};
@@ -8,11 +8,6 @@ mod byond;
 mod config;
 mod cors;
 mod database;
-
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
-}
 
 #[rocket::main]
 async fn main() -> Result<(), Error> {
@@ -30,8 +25,7 @@ async fn main() -> Result<(), Error> {
     let rocket = rocket::custom(provider)
         .attach(cors()?)
         .manage(config.servers)
-        .manage(database)
-        .mount("/", routes![index]);
+        .manage(database);
 
     let rocket = api::mount(rocket);
 
