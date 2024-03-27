@@ -166,6 +166,31 @@ pub async fn get_jobs(pool: &MySqlPool) -> Result<Vec<String>, Error> {
     Ok(jobs)
 }
 
+pub async fn get_ckey(ckey: &str, pool: &MySqlPool) -> Result<Vec<String>, Error> {
+    let mut connection = pool.acquire().await?;
+
+    let query = query("SELECT ckey FROM player WHERE ckey LIKE ? ORDER BY ckey LIMIT 25");
+    let bound = query.bind(format!("{ckey}%"));
+
+    let mut ckeys = Vec::new();
+
+    {
+        let mut rows = connection.fetch(bound);
+
+        while let Some(row) = rows.next().await {
+            let row = row?;
+
+            let ckey = row.try_get("ckey")?;
+
+            ckeys.push(ckey);
+        }
+    }
+
+    connection.close().await?;
+
+    Ok(ckeys)
+}
+
 #[derive(Debug)]
 pub struct Ban {
     pub id: u32,

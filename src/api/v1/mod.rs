@@ -2,6 +2,7 @@ use rocket::{catchers, routes, Build, Rocket};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+mod autocomplete;
 mod common;
 mod player;
 mod server;
@@ -17,12 +18,13 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
         .mount(
             "/v1",
             routes![
-                server::index,
                 player::index,
-                player::top,
                 player::ban,
-                player::jobs,
-                player::roletime
+                player::roletime,
+                player::top,
+                server::index,
+                autocomplete::job,
+                autocomplete::ckey
             ],
         )
 }
