@@ -21,7 +21,8 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
                 player::index,
                 player::top,
                 player::ban,
-                player::jobs
+                player::jobs,
+                player::roletime
             ],
         )
 }

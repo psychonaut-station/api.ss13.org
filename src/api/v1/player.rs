@@ -2,8 +2,8 @@ use rocket::{get, http::Status, State};
 
 use crate::{
     database::{
-        error::Error as DatabaseError, get_ban, get_jobs, get_player, get_top_roletime, Ban,
-        Player, Roletime,
+        error::Error as DatabaseError, get_ban, get_jobs, get_player, get_roletime,
+        get_top_roletime, Ban, JobRoletime, Player, PlayerRoletime,
     },
     Database,
 };
@@ -27,31 +27,6 @@ pub async fn index(
     Ok(GenericResponse::Success(player))
 }
 
-#[get("/player/top?<job>")]
-pub async fn top(
-    job: &str,
-    database: &State<Database>,
-    _api_key: ApiKey,
-) -> Result<GenericResponse<Vec<Roletime>>, Status> {
-    let Ok(roletimes) = get_top_roletime(job, &database.pool).await else {
-        return Err(Status::InternalServerError);
-    };
-
-    Ok(GenericResponse::Success(roletimes))
-}
-
-#[get("/player/top")]
-pub async fn jobs(
-    database: &State<Database>,
-    _api_key: ApiKey,
-) -> Result<GenericResponse<Vec<String>>, Status> {
-    let Ok(jobs) = get_jobs(&database.pool).await else {
-        return Err(Status::InternalServerError);
-    };
-
-    Ok(GenericResponse::Success(jobs))
-}
-
 #[get("/player/ban?<ckey>&<id>")]
 pub async fn ban(
     ckey: Option<&str>,
@@ -68,4 +43,42 @@ pub async fn ban(
     };
 
     Ok(GenericResponse::Success(bans))
+}
+
+#[get("/player/roletime?<ckey>")]
+pub async fn roletime(
+    ckey: &str,
+    database: &State<Database>,
+    _api_key: ApiKey,
+) -> Result<GenericResponse<Vec<PlayerRoletime>>, Status> {
+    let Ok(roletimes) = get_roletime(ckey, &database.pool).await else {
+        return Err(Status::InternalServerError);
+    };
+
+    Ok(GenericResponse::Success(roletimes))
+}
+
+#[get("/player/roletime/top?<job>")]
+pub async fn top(
+    job: &str,
+    database: &State<Database>,
+    _api_key: ApiKey,
+) -> Result<GenericResponse<Vec<JobRoletime>>, Status> {
+    let Ok(roletimes) = get_top_roletime(job, &database.pool).await else {
+        return Err(Status::InternalServerError);
+    };
+
+    Ok(GenericResponse::Success(roletimes))
+}
+
+#[get("/autocomplete/jobs")]
+pub async fn jobs(
+    database: &State<Database>,
+    _api_key: ApiKey,
+) -> Result<GenericResponse<Vec<String>>, Status> {
+    let Ok(jobs) = get_jobs(&database.pool).await else {
+        return Err(Status::InternalServerError);
+    };
+
+    Ok(GenericResponse::Success(jobs))
 }

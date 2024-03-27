@@ -72,12 +72,12 @@ pub async fn get_player(ckey: &str, pool: &MySqlPool) -> Result<Player, Error> {
 }
 
 #[derive(Debug, Serialize)]
-pub struct Roletime {
+pub struct JobRoletime {
     ckey: String,
     minutes: u32,
 }
 
-pub async fn get_top_roletime(job: &str, pool: &MySqlPool) -> Result<Vec<Roletime>, Error> {
+pub async fn get_top_roletime(job: &str, pool: &MySqlPool) -> Result<Vec<JobRoletime>, Error> {
     let mut connection = pool.acquire().await?;
 
     let query = query(
@@ -93,8 +93,43 @@ pub async fn get_top_roletime(job: &str, pool: &MySqlPool) -> Result<Vec<Roletim
         while let Some(row) = rows.next().await {
             let row = row?;
 
-            let roletime = Roletime {
+            let roletime = JobRoletime {
                 ckey: row.try_get("ckey")?,
+                minutes: row.try_get("minutes")?,
+            };
+
+            roletimes.push(roletime);
+        }
+    }
+
+    connection.close().await?;
+
+    Ok(roletimes)
+}
+
+#[derive(Debug, Serialize)]
+pub struct PlayerRoletime {
+    job: String,
+    minutes: u32,
+}
+
+pub async fn get_roletime(ckey: &str, pool: &MySqlPool) -> Result<Vec<PlayerRoletime>, Error> {
+    let mut connection = pool.acquire().await?;
+
+    let query =
+        query("SELECT job, minutes FROM role_time WHERE LOWER(ckey) = ? ORDER BY minutes DESC");
+    let bound = query.bind(ckey.to_lowercase());
+
+    let mut roletimes = Vec::new();
+
+    {
+        let mut rows = connection.fetch(bound);
+
+        while let Some(row) = rows.next().await {
+            let row = row?;
+
+            let roletime = PlayerRoletime {
+                job: row.try_get("job")?,
                 minutes: row.try_get("minutes")?,
             };
 
