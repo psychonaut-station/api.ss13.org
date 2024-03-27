@@ -1,10 +1,7 @@
 use rocket::{get, http::Status, State};
 
 use crate::{
-    database::{
-        error::Error as DatabaseError, get_ban, get_jobs, get_player, get_roletime,
-        get_top_roletime, Ban, JobRoletime, Player, PlayerRoletime,
-    },
+    database::{error::Error as DatabaseError, *},
     Database,
 };
 
@@ -69,16 +66,4 @@ pub async fn top(
     };
 
     Ok(GenericResponse::Success(roletimes))
-}
-
-#[get("/autocomplete/jobs")]
-pub async fn jobs(
-    database: &State<Database>,
-    _api_key: ApiKey,
-) -> Result<GenericResponse<Vec<String>>, Status> {
-    let Ok(jobs) = get_jobs(&database.pool).await else {
-        return Err(Status::InternalServerError);
-    };
-
-    Ok(GenericResponse::Success(jobs))
 }
