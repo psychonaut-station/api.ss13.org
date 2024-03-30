@@ -6,6 +6,7 @@ mod autocomplete;
 mod common;
 mod player;
 mod server;
+mod verify;
 
 pub use common::*;
 
@@ -23,6 +24,7 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
                 player::roletime,
                 player::top,
                 server::index,
+                verify::index,
                 autocomplete::job,
                 autocomplete::ckey
             ],
