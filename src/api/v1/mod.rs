@@ -25,6 +25,7 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
                 player::top,
                 server::index,
                 verify::index,
+                verify::unverify,
                 autocomplete::job,
                 autocomplete::ckey
             ],

@@ -240,16 +240,16 @@ pub async fn get_ban(
 ) -> Result<Vec<Ban>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = {
-        if let Some(ckey) = ckey {
-            query("SELECT id, bantime, round_id, role, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE LOWER(ckey) = ?")
-                .bind(ckey.to_lowercase())
-        } else if let Some(id) = id {
-            query("SELECT id, bantime, round_id, role, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE id = ?")
-                .bind(id)
-        } else {
-            return Err(Error::NoCkeyOrId);
-        }
+    let mut sql = "SELECT id, bantime, round_id, role, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE".to_string();
+
+    let query = if ckey.is_some() {
+        sql = format!("{sql} LOWER(ckey) = ?");
+        query(&sql).bind(ckey.unwrap().to_lowercase())
+    } else if id.is_some() {
+        sql = format!("{sql} id = ?");
+        query(&sql).bind(id.unwrap())
+    } else {
+        return Err(Error::InvalidArguments);
     };
 
     let mut bans = Vec::new();

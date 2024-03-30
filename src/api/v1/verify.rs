@@ -30,3 +30,26 @@ pub async fn index(
         Err(_) => Err(Status::InternalServerError),
     }
 }
+
+#[derive(Deserialize)]
+pub struct UnverifyData<'r> {
+    discord_id: Option<&'r str>,
+    ckey: Option<&'r str>,
+}
+
+#[post("/unverify", data = "<data>")]
+pub async fn unverify(
+    data: Json<UnverifyData<'_>>,
+    database: &State<Database>,
+    _api_key: ApiKey,
+) -> Result<GenericResponse<String>, Status> {
+    if data.discord_id.is_some() ^ data.ckey.is_none() {
+        return Err(Status::BadRequest);
+    }
+
+    match unverify_discord(data.discord_id, data.ckey, &database.pool).await {
+        Ok(account) => Ok(GenericResponse::Success(account)),
+        Err(DatabaseError::NotLinked) => Err(Status::NotFound),
+        Err(_) => Err(Status::InternalServerError),
+    }
+}
