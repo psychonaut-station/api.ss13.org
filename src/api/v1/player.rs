@@ -15,10 +15,8 @@ pub async fn index(
 ) -> Result<GenericResponse<Player>, Status> {
     let player = match get_player(ckey, &database.pool).await {
         Ok(player) => player,
-        Err(err) => match err {
-            DatabaseError::PlayerNotFound => return Err(Status::NotFound),
-            _ => return Err(Status::InternalServerError),
-        },
+        Err(DatabaseError::PlayerNotFound) => return Err(Status::NotFound),
+        Err(_) => return Err(Status::InternalServerError),
     };
 
     Ok(GenericResponse::Success(player))

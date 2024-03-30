@@ -8,4 +8,10 @@ pub enum Error {
     PlayerNotFound,
     #[error("No ckey or id provided")]
     NoCkeyOrId,
+    #[error("Discord account is already linked to {0}")]
+    AlreadyLinked(String),
+    #[error("Token does not exist or is invalid")]
+    TokenInvalid,
+    #[error("Token is already in use by {0}")]
+    TokenInUse(i64),
 }

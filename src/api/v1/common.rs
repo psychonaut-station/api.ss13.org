@@ -15,19 +15,25 @@ use super::server::Status as ServerStatus;
 
 #[derive(Debug, Serialize)]
 pub enum GenericResponse<R> {
-    Success(R),
     Failure,
-    Denied,
-    BadAuth,
+    Success(R),
+    Forbidden,
+    Unauthorized,
+    NotFound,
+    BadRequest,
+    Conflict(Option<R>),
 }
 
 impl<R: Serialize> Responder<'_, 'static> for GenericResponse<R> {
     fn respond_to(self, _: &Request) -> response::Result<'static> {
         let (status, reason, response) = match self {
-            GenericResponse::Success(r) => (1, "success", Some(r)),
             GenericResponse::Failure => (0, "failure", None),
-            GenericResponse::Denied => (2, "denied", None),
-            GenericResponse::BadAuth => (3, "bad auth", None),
+            GenericResponse::Success(r) => (1, "success", Some(r)),
+            GenericResponse::Forbidden => (2, "forbidden", None),
+            GenericResponse::Unauthorized => (3, "unauthorized", None),
+            GenericResponse::NotFound => (4, "not found", None),
+            GenericResponse::BadRequest => (5, "bad request", None),
+            GenericResponse::Conflict(r) => (6, "conflict", r),
         };
 
         let json = json!({
@@ -37,7 +43,19 @@ impl<R: Serialize> Responder<'_, 'static> for GenericResponse<R> {
         })
         .to_string();
 
+        let status = match status {
+            0 => Status::InternalServerError,
+            1 => Status::Ok,
+            2 => Status::Forbidden,
+            3 => Status::Unauthorized,
+            4 => Status::NotFound,
+            5 => Status::BadRequest,
+            6 => Status::Conflict,
+            _ => unreachable!(),
+        };
+
         Response::build()
+            .status(status)
             .header(ContentType::JSON)
             .sized_body(json.len(), Cursor::new(json))
             .ok()
@@ -77,9 +95,11 @@ impl<'r> FromRequest<'r> for ApiKey {
 #[catch(default)]
 pub fn default_catcher(status: Status, _: &Request) -> GenericResponse<()> {
     match status {
-        Status { code: 404 } => GenericResponse::Failure,
-        Status { code: 403 } => GenericResponse::Denied,
-        Status { code: 401 } => GenericResponse::BadAuth,
+        Status { code: 409 } => GenericResponse::Conflict(None),
+        Status { code: 404 } => GenericResponse::NotFound,
+        Status { code: 403 } => GenericResponse::Forbidden,
+        Status { code: 401 } => GenericResponse::Unauthorized,
+        Status { code: 400 } => GenericResponse::BadRequest,
         _ => GenericResponse::Failure,
     }
 }
