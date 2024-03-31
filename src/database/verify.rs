@@ -1,3 +1,4 @@
+use rand::Rng as _;
 use regex::Regex;
 use sqlx::{pool::PoolConnection, Executor as _, MySql, MySqlPool, Row as _};
 
@@ -13,7 +14,7 @@ pub async fn verify_discord(
     let mut connection = pool.acquire().await?;
 
     if let Ok(ckey) = get_ckey_by_discord_id(discord_id, &mut connection).await {
-        return Err(Error::AlreadyLinked(ckey));
+        return Err(Error::DiscordAlreadyLinked(ckey));
     }
 
     let regex = Regex::new(r"^([a-z']+-){5}[a-z']+$").unwrap();
@@ -28,7 +29,7 @@ pub async fn verify_discord(
     }
 
     if let Ok(discord_id) = get_discord_id_by_token(one_time_token, true, &mut connection).await {
-        return Err(Error::TokenInUse(discord_id));
+        return Err(Error::CkeyAlreadyLinked(discord_id));
     }
 
     let query =
@@ -40,6 +41,38 @@ pub async fn verify_discord(
     let ckey = get_ckey_by_discord_id(discord_id, &mut connection).await?;
 
     Ok(ckey)
+}
+
+pub async fn force_verify_discord(
+    discord_id: &str,
+    ckey: &str,
+    pool: &MySqlPool,
+) -> Result<(), Error> {
+    let mut connection = pool.acquire().await?;
+
+    if let Ok(ckey) = get_ckey_by_discord_id(discord_id, &mut connection).await {
+        return Err(Error::DiscordAlreadyLinked(ckey));
+    }
+
+    if !player_exists(ckey, &mut connection).await {
+        return Err(Error::PlayerNotFound);
+    }
+
+    if let Ok(discord_id) = get_discord_id_by_ckey(ckey, &mut connection).await {
+        return Err(Error::CkeyAlreadyLinked(discord_id));
+    }
+
+    let token = generate_one_time_token(&mut connection).await;
+    let discord_id = discord_id.parse::<i64>()?;
+
+    let query = sqlx::query(
+        "INSERT INTO discord_links (discord_id, ckey, one_time_token, valid) VALUES (?, ?, ?, 1)",
+    );
+    let query = query.bind(discord_id).bind(ckey.to_lowercase()).bind(token);
+
+    connection.execute(query).await?;
+
+    Ok(())
 }
 
 pub async fn unverify_discord(
@@ -145,5 +178,30 @@ pub async fn fetch_discord_by_ckey(
     match get_discord_id_by_ckey(ckey, &mut connection).await {
         Ok(discord_id) => Ok(discord::get_user(&discord_id.to_string(), discord_token).await?),
         Err(e) => Err(e),
+    }
+}
+
+async fn generate_one_time_token(connection: &mut PoolConnection<MySql>) -> String {
+    let common_words = include_str!("../../common_words.txt");
+    let common_words = common_words.lines().collect::<Vec<_>>();
+
+    loop {
+        let mut token = String::new();
+
+        for _ in 0..6 {
+            let word = common_words[rand::thread_rng().gen_range(0..common_words.len())];
+            token.push_str(word);
+            token.push('-');
+        }
+
+        token.pop();
+
+        if token.len() > 100 {
+            token.truncate(100);
+        }
+
+        if let Err(Error::TokenInvalid) = get_discord_id_by_token(&token, false, connection).await {
+            return token;
+        }
     }
 }

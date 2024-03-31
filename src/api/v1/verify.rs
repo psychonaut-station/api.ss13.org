@@ -11,7 +11,8 @@ use super::{common::ApiKey, GenericResponse};
 #[derive(Deserialize)]
 pub struct VerifyData<'r> {
     discord_id: &'r str,
-    one_time_token: &'r str,
+    one_time_token: Option<&'r str>,
+    ckey: Option<&'r str>,
 }
 
 #[post("/verify", data = "<data>")]
@@ -20,14 +21,32 @@ pub async fn index(
     database: &State<Database>,
     _api_key: ApiKey,
 ) -> Result<GenericResponse<String>, Status> {
-    match verify_discord(data.discord_id, data.one_time_token, &database.pool).await {
-        Ok(ckey) => Ok(GenericResponse::Success(ckey)),
-        Err(DatabaseError::AlreadyLinked(ckey)) => Ok(GenericResponse::Conflict(Some(ckey))),
-        Err(DatabaseError::TokenInUse(discord_id)) => {
-            Ok(GenericResponse::Conflict(Some(format!("@{discord_id}"))))
+    if let Some(one_time_token) = data.one_time_token {
+        match verify_discord(data.discord_id, one_time_token, &database.pool).await {
+            Ok(ckey) => Ok(GenericResponse::Success(ckey)),
+            Err(DatabaseError::DiscordAlreadyLinked(ckey)) => {
+                Ok(GenericResponse::Conflict(Some(ckey)))
+            }
+            Err(DatabaseError::CkeyAlreadyLinked(discord_id)) => {
+                Ok(GenericResponse::Conflict(Some(format!("@{discord_id}"))))
+            }
+            Err(DatabaseError::TokenInvalid) => Err(Status::NotFound),
+            Err(_) => Err(Status::InternalServerError),
         }
-        Err(DatabaseError::TokenInvalid) => Err(Status::NotFound),
-        Err(_) => Err(Status::InternalServerError),
+    } else if let Some(ckey) = data.ckey {
+        match force_verify_discord(data.discord_id, ckey, &database.pool).await {
+            Ok(_) => Ok(GenericResponse::Success("".to_string())),
+            Err(DatabaseError::DiscordAlreadyLinked(ckey)) => {
+                Ok(GenericResponse::Conflict(Some(ckey)))
+            }
+            Err(DatabaseError::CkeyAlreadyLinked(discord_id)) => {
+                Ok(GenericResponse::Conflict(Some(format!("@{discord_id}"))))
+            }
+            Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+            Err(_) => Err(Status::InternalServerError),
+        }
+    } else {
+        Err(Status::BadRequest)
     }
 }
 
