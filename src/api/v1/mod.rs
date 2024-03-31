@@ -23,6 +23,7 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
                 player::ban,
                 player::roletime,
                 player::top,
+                player::discord,
                 server::index,
                 verify::index,
                 verify::unverify,

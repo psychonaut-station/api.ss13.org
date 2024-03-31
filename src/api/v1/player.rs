@@ -1,7 +1,9 @@
 use rocket::{get, http::Status, State};
 
 use crate::{
+    config::Config,
     database::{error::Error as DatabaseError, *},
+    http::discord::User,
     Database,
 };
 
@@ -64,4 +66,18 @@ pub async fn top(
     };
 
     Ok(GenericResponse::Success(roletimes))
+}
+
+#[get("/player/discord?<ckey>")]
+pub async fn discord(
+    ckey: &str,
+    database: &State<Database>,
+    config: &State<Config>,
+    _api_key: ApiKey,
+) -> Result<GenericResponse<User>, Status> {
+    match fetch_discord_by_ckey(ckey, &config.discord_token, &database.pool).await {
+        Ok(user) => Ok(GenericResponse::Success(user)),
+        Err(DatabaseError::NotLinked) | Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Err(_) => Err(Status::InternalServerError),
+    }
 }

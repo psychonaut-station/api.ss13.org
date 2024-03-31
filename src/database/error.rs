@@ -4,6 +4,9 @@ use thiserror::Error;
 #[error(transparent)]
 pub enum Error {
     Sqlx(#[from] sqlx::Error),
+    Reqwest(#[from] reqwest::Error),
+    SerdeJson(#[from] serde_json::Error),
+    Http(#[from] crate::http::Error),
     #[error("Player not found")]
     PlayerNotFound,
     #[error("Invalid arguments provided")]
