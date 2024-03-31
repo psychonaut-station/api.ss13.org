@@ -47,7 +47,7 @@ impl Serialize for Player {
 pub async fn get_player(ckey: &str, pool: &MySqlPool) -> Result<Player, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = query("SELECT ckey, byond_key, firstseen, firstseen_round_id, lastseen, lastseen_round_id, INET_NTOA(ip), computerid, accountjoindate FROM player WHERE LOWER(ckey) = ?");
+    let query = sqlx::query("SELECT ckey, byond_key, firstseen, firstseen_round_id, lastseen, lastseen_round_id, INET_NTOA(ip), computerid, accountjoindate FROM player WHERE LOWER(ckey) = ?");
     let bound = query.bind(ckey.to_lowercase());
 
     let Ok(row) = connection.fetch_one(bound).await else {
@@ -116,8 +116,9 @@ pub struct PlayerRoletime {
 pub async fn get_roletime(ckey: &str, pool: &MySqlPool) -> Result<Vec<PlayerRoletime>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query =
-        query("SELECT job, minutes FROM role_time WHERE LOWER(ckey) = ? ORDER BY minutes DESC");
+    let query = sqlx::query(
+        "SELECT job, minutes FROM role_time WHERE LOWER(ckey) = ? ORDER BY minutes DESC",
+    );
     let bound = query.bind(ckey.to_lowercase());
 
     let mut roletimes = Vec::new();
@@ -145,7 +146,7 @@ pub async fn get_roletime(ckey: &str, pool: &MySqlPool) -> Result<Vec<PlayerRole
 pub async fn get_jobs(pool: &MySqlPool) -> Result<Vec<String>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = query("SELECT DISTINCT job FROM role_time ORDER BY job ASC");
+    let query = sqlx::query("SELECT DISTINCT job FROM role_time ORDER BY job ASC");
 
     let mut jobs = Vec::new();
 
@@ -169,7 +170,7 @@ pub async fn get_jobs(pool: &MySqlPool) -> Result<Vec<String>, Error> {
 pub async fn get_ckey(ckey: &str, pool: &MySqlPool) -> Result<Vec<String>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = query("SELECT ckey FROM player WHERE ckey LIKE ? ORDER BY ckey LIMIT 25");
+    let query = sqlx::query("SELECT ckey FROM player WHERE ckey LIKE ? ORDER BY ckey LIMIT 25");
     let bound = query.bind(format!("{ckey}%"));
 
     let mut ckeys = Vec::new();

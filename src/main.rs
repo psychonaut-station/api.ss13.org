@@ -8,6 +8,7 @@ mod byond;
 mod config;
 mod cors;
 mod database;
+mod http;
 
 #[rocket::main]
 async fn main() -> Result<(), Error> {

@@ -8,6 +8,7 @@ pub struct Config {
     pub address: IpAddr,
     pub port: u16,
     pub secret: String,
+    pub discord_token: String,
     pub cli_colors: bool,
     pub log_level: LogLevel,
     pub database: Database,
