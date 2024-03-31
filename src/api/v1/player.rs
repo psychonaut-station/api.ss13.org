@@ -15,31 +15,24 @@ pub async fn index(
     database: &State<Database>,
     _api_key: ApiKey,
 ) -> Result<GenericResponse<Player>, Status> {
-    let player = match get_player(ckey, &database.pool).await {
-        Ok(player) => player,
-        Err(DatabaseError::PlayerNotFound) => return Err(Status::NotFound),
-        Err(_) => return Err(Status::InternalServerError),
-    };
-
-    Ok(GenericResponse::Success(player))
+    match get_player(ckey, &database.pool).await {
+        Ok(player) => Ok(GenericResponse::Success(player)),
+        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Err(_) => Err(Status::InternalServerError),
+    }
 }
 
-#[get("/player/ban?<ckey>&<id>")]
+#[get("/player/ban?<ckey>")]
 pub async fn ban(
-    ckey: Option<&str>,
-    id: Option<&str>,
+    ckey: &str,
     database: &State<Database>,
     _api_key: ApiKey,
 ) -> Result<GenericResponse<Vec<Ban>>, Status> {
-    if ckey.is_some() ^ id.is_none() {
-        return Err(Status::BadRequest);
+    match get_ban(ckey, &database.pool).await {
+        Ok(bans) => Ok(GenericResponse::Success(bans)),
+        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Err(_) => Err(Status::InternalServerError),
     }
-
-    let Ok(bans) = get_ban(ckey, id, &database.pool).await else {
-        return Err(Status::InternalServerError);
-    };
-
-    Ok(GenericResponse::Success(bans))
 }
 
 #[get("/player/roletime?<ckey>")]
@@ -48,11 +41,11 @@ pub async fn roletime(
     database: &State<Database>,
     _api_key: ApiKey,
 ) -> Result<GenericResponse<Vec<PlayerRoletime>>, Status> {
-    let Ok(roletimes) = get_roletime(ckey, &database.pool).await else {
-        return Err(Status::InternalServerError);
-    };
-
-    Ok(GenericResponse::Success(roletimes))
+    match get_roletime(ckey, &database.pool).await {
+        Ok(roletimes) => Ok(GenericResponse::Success(roletimes)),
+        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Err(_) => Err(Status::InternalServerError),
+    }
 }
 
 #[get("/player/roletime/top?<job>")]
@@ -77,7 +70,8 @@ pub async fn discord(
 ) -> Result<GenericResponse<User>, Status> {
     match fetch_discord_by_ckey(ckey, &config.discord_token, &database.pool).await {
         Ok(user) => Ok(GenericResponse::Success(user)),
-        Err(DatabaseError::NotLinked) | Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Err(DatabaseError::NotLinked) => Err(Status::Conflict),
         Err(_) => Err(Status::InternalServerError),
     }
 }
