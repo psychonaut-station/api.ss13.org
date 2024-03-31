@@ -1,9 +1,9 @@
 use regex::Regex;
-use sqlx::{pool::PoolConnection, query, Executor as _, MySql, MySqlPool, Row as _};
+use sqlx::{pool::PoolConnection, Executor as _, MySql, MySqlPool, Row as _};
 
 use crate::http::discord::{self, User};
 
-use super::error::Error;
+use super::{error::Error, player_exists};
 
 pub async fn verify_discord(
     discord_id: &str,
@@ -87,9 +87,9 @@ async fn get_ckey_by_discord_id(
     connection: &mut PoolConnection<MySql>,
 ) -> Result<String, Error> {
     let query = sqlx::query("SELECT ckey FROM discord_links WHERE discord_id = ? AND valid = 1");
-    let bound = query.bind(discord_id);
+    let query = query.bind(discord_id);
 
-    if let Ok(row) = connection.fetch_one(bound).await {
+    if let Ok(row) = connection.fetch_one(query).await {
         return Ok(row.try_get("ckey")?);
     }
 
@@ -108,10 +108,7 @@ pub async fn get_discord_id_by_ckey(
         return Ok(row.try_get("discord_id")?);
     }
 
-    let query = sqlx::query("SELECT 1 FROM player WHERE LOWER(ckey) = ?");
-    let query = query.bind(ckey.to_lowercase());
-
-    if connection.fetch_one(query).await.is_err() {
+    if !player_exists(ckey, connection).await {
         return Err(Error::PlayerNotFound);
     }
 
@@ -129,7 +126,7 @@ async fn get_discord_id_by_token(
         sql = format!("{sql} AND valid = 1");
     }
 
-    let query = query(&sql).bind(one_time_token);
+    let query = sqlx::query(&sql).bind(one_time_token);
 
     if let Ok(row) = connection.fetch_one(query).await {
         return row.try_get("discord_id").map_err(|_| Error::NotLinked);

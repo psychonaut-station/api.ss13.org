@@ -1,9 +1,9 @@
 use rocket::futures::StreamExt as _;
 use serde::{ser::SerializeStruct as _, Serialize, Serializer};
 use sqlx::{
-    query,
+    pool::PoolConnection,
     types::chrono::{NaiveDate, NaiveDateTime},
-    Executor as _, MySqlPool, Row as _,
+    Executor as _, MySql, MySqlPool, Row as _,
 };
 use std::net::IpAddr;
 
@@ -48,9 +48,9 @@ pub async fn get_player(ckey: &str, pool: &MySqlPool) -> Result<Player, Error> {
     let mut connection = pool.acquire().await?;
 
     let query = sqlx::query("SELECT ckey, byond_key, firstseen, firstseen_round_id, lastseen, lastseen_round_id, INET_NTOA(ip), computerid, accountjoindate FROM player WHERE LOWER(ckey) = ?");
-    let bound = query.bind(ckey.to_lowercase());
+    let query = query.bind(ckey.to_lowercase());
 
-    let Ok(row) = connection.fetch_one(bound).await else {
+    let Ok(row) = connection.fetch_one(query).await else {
         return Err(Error::PlayerNotFound);
     };
 
@@ -80,15 +80,15 @@ pub struct JobRoletime {
 pub async fn get_top_roletime(job: &str, pool: &MySqlPool) -> Result<Vec<JobRoletime>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = query(
+    let query = sqlx::query(
         "SELECT ckey, minutes FROM role_time WHERE LOWER(job) = ? ORDER BY minutes DESC LIMIT 15",
     );
-    let bound = query.bind(job.to_lowercase());
+    let query = query.bind(job.to_lowercase());
 
     let mut roletimes = Vec::new();
 
     {
-        let mut rows = connection.fetch(bound);
+        let mut rows = connection.fetch(query);
 
         while let Some(row) = rows.next().await {
             let row = row?;
@@ -119,12 +119,12 @@ pub async fn get_roletime(ckey: &str, pool: &MySqlPool) -> Result<Vec<PlayerRole
     let query = sqlx::query(
         "SELECT job, minutes FROM role_time WHERE LOWER(ckey) = ? ORDER BY minutes DESC",
     );
-    let bound = query.bind(ckey.to_lowercase());
+    let query = query.bind(ckey.to_lowercase());
 
     let mut roletimes = Vec::new();
 
     {
-        let mut rows = connection.fetch(bound);
+        let mut rows = connection.fetch(query);
 
         while let Some(row) = rows.next().await {
             let row = row?;
@@ -136,6 +136,11 @@ pub async fn get_roletime(ckey: &str, pool: &MySqlPool) -> Result<Vec<PlayerRole
 
             roletimes.push(roletime);
         }
+    }
+
+    if roletimes.is_empty() && !player_exists(ckey, &mut connection).await {
+        connection.close().await?;
+        return Err(Error::PlayerNotFound);
     }
 
     connection.close().await?;
@@ -167,16 +172,16 @@ pub async fn get_jobs(pool: &MySqlPool) -> Result<Vec<String>, Error> {
     Ok(jobs)
 }
 
-pub async fn get_ckey(ckey: &str, pool: &MySqlPool) -> Result<Vec<String>, Error> {
+pub async fn get_ckeys(ckey: &str, pool: &MySqlPool) -> Result<Vec<String>, Error> {
     let mut connection = pool.acquire().await?;
 
     let query = sqlx::query("SELECT ckey FROM player WHERE ckey LIKE ? ORDER BY ckey LIMIT 25");
-    let bound = query.bind(format!("{ckey}%"));
+    let query = query.bind(format!("{ckey}%"));
 
     let mut ckeys = Vec::new();
 
     {
-        let mut rows = connection.fetch(bound);
+        let mut rows = connection.fetch(query);
 
         while let Some(row) = rows.next().await {
             let row = row?;
@@ -234,24 +239,11 @@ impl Serialize for Ban {
     }
 }
 
-pub async fn get_ban(
-    ckey: Option<&str>,
-    id: Option<&str>,
-    pool: &MySqlPool,
-) -> Result<Vec<Ban>, Error> {
+pub async fn get_ban(ckey: &str, pool: &MySqlPool) -> Result<Vec<Ban>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let mut sql = "SELECT id, bantime, round_id, role, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE".to_string();
-
-    let query = if ckey.is_some() {
-        sql = format!("{sql} LOWER(ckey) = ?");
-        query(&sql).bind(ckey.unwrap().to_lowercase())
-    } else if id.is_some() {
-        sql = format!("{sql} id = ?");
-        query(&sql).bind(id.unwrap())
-    } else {
-        return Err(Error::InvalidArguments);
-    };
+    let query = sqlx::query("SELECT id, bantime, round_id, role, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE LOWER(ckey) = ?");
+    let query = query.bind(ckey.to_lowercase());
 
     let mut bans = Vec::new();
 
@@ -279,7 +271,23 @@ pub async fn get_ban(
         }
     }
 
+    if bans.is_empty() && !player_exists(ckey, &mut connection).await {
+        connection.close().await?;
+        return Err(Error::PlayerNotFound);
+    }
+
     connection.close().await?;
 
     Ok(bans)
+}
+
+pub async fn player_exists(ckey: &str, connection: &mut PoolConnection<MySql>) -> bool {
+    let query = sqlx::query("SELECT 1 FROM player WHERE LOWER(ckey) = ?");
+    let query = query.bind(ckey.to_lowercase());
+
+    if connection.fetch_one(query).await.is_ok() {
+        return true;
+    }
+
+    false
 }

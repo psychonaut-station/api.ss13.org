@@ -22,7 +22,7 @@ pub async fn ckey(
     database: &State<Database>,
     _api_key: ApiKey,
 ) -> Result<GenericResponse<Vec<String>>, Status> {
-    let Ok(ckeys) = get_ckey(ckey, &database.pool).await else {
+    let Ok(ckeys) = get_ckeys(ckey, &database.pool).await else {
         return Err(Status::InternalServerError);
     };
 

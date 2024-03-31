@@ -49,7 +49,8 @@ pub async fn unverify(
 
     match unverify_discord(data.discord_id, data.ckey, &database.pool).await {
         Ok(account) => Ok(GenericResponse::Success(account)),
-        Err(DatabaseError::NotLinked) | Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Err(DatabaseError::NotLinked) => Err(Status::Conflict),
         Err(_) => Err(Status::InternalServerError),
     }
 }
