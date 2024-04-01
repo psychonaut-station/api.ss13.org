@@ -291,3 +291,37 @@ pub async fn player_exists(ckey: &str, connection: &mut PoolConnection<MySql>) -
 
     false
 }
+
+#[derive(Debug, Serialize)]
+pub struct IcName {
+    pub name: String,
+    pub ckey: String,
+}
+
+pub async fn get_ic_names(ic_name: &str, pool: &MySqlPool) -> Result<Vec<IcName>, Error> {
+    let mut connection = pool.acquire().await?;
+
+    let query = sqlx::query(
+        "SELECT DISTINCT name, byondkey FROM death WHERE name LIKE ? ORDER BY name DESC LIMIT 25",
+    );
+    let query = query.bind(format!("%{ic_name}%"));
+
+    let mut ckeys = Vec::new();
+
+    {
+        let mut rows = connection.fetch(query);
+
+        while let Some(row) = rows.next().await {
+            let row = row?;
+
+            ckeys.push(IcName {
+                name: row.try_get("name")?,
+                ckey: row.try_get("byondkey")?,
+            });
+        }
+    }
+
+    connection.close().await?;
+
+    Ok(ckeys)
+}

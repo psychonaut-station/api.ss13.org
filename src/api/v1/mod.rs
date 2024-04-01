@@ -28,7 +28,8 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
                 verify::index,
                 verify::unverify,
                 autocomplete::job,
-                autocomplete::ckey
+                autocomplete::ckey,
+                autocomplete::ic_name
             ],
         )
 }

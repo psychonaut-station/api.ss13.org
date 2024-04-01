@@ -13,7 +13,7 @@ pub async fn verify_discord(
 ) -> Result<String, Error> {
     let mut connection = pool.acquire().await?;
 
-    if let Ok(ckey) = get_ckey_by_discord_id(discord_id, &mut connection).await {
+    if let Ok(ckey) = ckey_by_discord_id(discord_id, &mut connection).await {
         return Err(Error::DiscordAlreadyLinked(ckey));
     }
 
@@ -23,12 +23,12 @@ pub async fn verify_discord(
     }
 
     if let Err(Error::TokenInvalid) =
-        get_discord_id_by_token(one_time_token, false, &mut connection).await
+        discord_id_by_token(one_time_token, false, &mut connection).await
     {
         return Err(Error::TokenInvalid);
     }
 
-    if let Ok(discord_id) = get_discord_id_by_token(one_time_token, true, &mut connection).await {
+    if let Ok(discord_id) = discord_id_by_token(one_time_token, true, &mut connection).await {
         return Err(Error::CkeyAlreadyLinked(discord_id));
     }
 
@@ -38,7 +38,7 @@ pub async fn verify_discord(
 
     connection.execute(query).await?;
 
-    let ckey = get_ckey_by_discord_id(discord_id, &mut connection).await?;
+    let ckey = ckey_by_discord_id(discord_id, &mut connection).await?;
 
     Ok(ckey)
 }
@@ -50,7 +50,7 @@ pub async fn force_verify_discord(
 ) -> Result<(), Error> {
     let mut connection = pool.acquire().await?;
 
-    if let Ok(ckey) = get_ckey_by_discord_id(discord_id, &mut connection).await {
+    if let Ok(ckey) = ckey_by_discord_id(discord_id, &mut connection).await {
         return Err(Error::DiscordAlreadyLinked(ckey));
     }
 
@@ -58,7 +58,7 @@ pub async fn force_verify_discord(
         return Err(Error::PlayerNotFound);
     }
 
-    if let Ok(discord_id) = get_discord_id_by_ckey(ckey, &mut connection).await {
+    if let Ok(discord_id) = discord_id_by_ckey(ckey, &mut connection).await {
         return Err(Error::CkeyAlreadyLinked(discord_id));
     }
 
@@ -83,7 +83,7 @@ pub async fn unverify_discord(
     let mut connection = pool.acquire().await?;
 
     if let Some(discord_id) = discord_id {
-        match get_ckey_by_discord_id(discord_id, &mut connection).await {
+        match ckey_by_discord_id(discord_id, &mut connection).await {
             Ok(ckey) => {
                 let query = sqlx::query(
                     "UPDATE discord_links SET valid = 0 WHERE discord_id = ? AND valid = 1",
@@ -97,7 +97,7 @@ pub async fn unverify_discord(
             Err(e) => return Err(e),
         }
     } else if let Some(ckey) = ckey {
-        match get_discord_id_by_ckey(ckey, &mut connection).await {
+        match discord_id_by_ckey(ckey, &mut connection).await {
             Ok(discord_id) => {
                 let query = sqlx::query(
                     "UPDATE discord_links SET valid = 0 WHERE LOWER(ckey) = ? AND valid = 1",
@@ -115,7 +115,7 @@ pub async fn unverify_discord(
     Err(Error::InvalidArguments)
 }
 
-async fn get_ckey_by_discord_id(
+async fn ckey_by_discord_id(
     discord_id: &str,
     connection: &mut PoolConnection<MySql>,
 ) -> Result<String, Error> {
@@ -129,7 +129,7 @@ async fn get_ckey_by_discord_id(
     Err(Error::NotLinked)
 }
 
-pub async fn get_discord_id_by_ckey(
+pub async fn discord_id_by_ckey(
     ckey: &str,
     connection: &mut PoolConnection<MySql>,
 ) -> Result<i64, Error> {
@@ -148,7 +148,7 @@ pub async fn get_discord_id_by_ckey(
     Err(Error::NotLinked)
 }
 
-async fn get_discord_id_by_token(
+async fn discord_id_by_token(
     one_time_token: &str,
     only_valid: bool,
     connection: &mut PoolConnection<MySql>,
@@ -175,10 +175,20 @@ pub async fn fetch_discord_by_ckey(
 ) -> Result<User, Error> {
     let mut connection = pool.acquire().await?;
 
-    match get_discord_id_by_ckey(ckey, &mut connection).await {
+    match discord_id_by_ckey(ckey, &mut connection).await {
         Ok(discord_id) => Ok(discord::get_user(&discord_id.to_string(), discord_token).await?),
         Err(e) => Err(e),
     }
+}
+
+pub async fn get_ckey_by_discord_id(discord_id: &str, pool: &MySqlPool) -> Result<String, Error> {
+    let mut connection = pool.acquire().await?;
+
+    let ckey = ckey_by_discord_id(discord_id, &mut connection).await?;
+
+    connection.close().await?;
+
+    Ok(ckey)
 }
 
 async fn generate_one_time_token(connection: &mut PoolConnection<MySql>) -> String {
@@ -200,7 +210,7 @@ async fn generate_one_time_token(connection: &mut PoolConnection<MySql>) -> Stri
             token.truncate(100);
         }
 
-        if let Err(Error::TokenInvalid) = get_discord_id_by_token(&token, false, connection).await {
+        if let Err(Error::TokenInvalid) = discord_id_by_token(&token, false, connection).await {
             return token;
         }
     }
