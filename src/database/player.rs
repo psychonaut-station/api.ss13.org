@@ -148,10 +148,13 @@ pub async fn get_roletime(ckey: &str, pool: &MySqlPool) -> Result<Vec<PlayerRole
     Ok(roletimes)
 }
 
-pub async fn get_jobs(pool: &MySqlPool) -> Result<Vec<String>, Error> {
+pub async fn get_jobs(job: &str, pool: &MySqlPool) -> Result<Vec<String>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = sqlx::query("SELECT DISTINCT job FROM role_time ORDER BY job ASC");
+    let query = sqlx::query(
+        "SELECT DISTINCT job FROM role_time WHERE LOWER(job) LIKE ? ORDER BY job ASC LIMIT 25",
+    );
+    let query = query.bind(format!("%{}%", job.to_lowercase()));
 
     let mut jobs = Vec::new();
 
@@ -302,7 +305,7 @@ pub async fn get_ic_names(ic_name: &str, pool: &MySqlPool) -> Result<Vec<IcName>
     let mut connection = pool.acquire().await?;
 
     let query = sqlx::query(
-        "SELECT DISTINCT name, byondkey FROM death WHERE name LIKE ? ORDER BY name DESC LIMIT 25",
+        "SELECT DISTINCT name, byondkey FROM death WHERE name LIKE ? ORDER BY name ASC LIMIT 25",
     );
     let query = query.bind(format!("%{ic_name}%"));
 
