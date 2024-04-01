@@ -4,12 +4,13 @@ use crate::{database::*, Database};
 
 use super::{common::ApiKey, GenericResponse};
 
-#[get("/autocomplete/job")]
+#[get("/autocomplete/job?<job>")]
 pub async fn job(
+    job: &str,
     database: &State<Database>,
     _api_key: ApiKey,
 ) -> Result<GenericResponse<Vec<String>>, Status> {
-    let Ok(jobs) = get_jobs(&database.pool).await else {
+    let Ok(jobs) = get_jobs(job, &database.pool).await else {
         return Err(Status::InternalServerError);
     };
 
