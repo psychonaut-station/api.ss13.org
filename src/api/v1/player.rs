@@ -1,9 +1,9 @@
 use rocket::{get, http::Status, State};
+use serde_json::{json, Value};
 
 use crate::{
     config::Config,
     database::{error::Error as DatabaseError, *},
-    http::discord::User,
     Database,
 };
 
@@ -61,17 +61,28 @@ pub async fn top(
     Ok(GenericResponse::Success(roletimes))
 }
 
-#[get("/player/discord?<ckey>")]
+#[get("/player/discord?<ckey>&<discord_id>")]
 pub async fn discord(
-    ckey: &str,
+    ckey: Option<&str>,
+    discord_id: Option<&str>,
     database: &State<Database>,
     config: &State<Config>,
     _api_key: ApiKey,
-) -> Result<GenericResponse<User>, Status> {
-    match fetch_discord_by_ckey(ckey, &config.discord_token, &database.pool).await {
-        Ok(user) => Ok(GenericResponse::Success(user)),
-        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
-        Err(DatabaseError::NotLinked) => Err(Status::Conflict),
-        Err(_) => Err(Status::InternalServerError),
+) -> Result<GenericResponse<Value>, Status> {
+    if let Some(ckey) = ckey {
+        match fetch_discord_by_ckey(ckey, &config.discord_token, &database.pool).await {
+            Ok(user) => Ok(GenericResponse::Success(json!(user))),
+            Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+            Err(DatabaseError::NotLinked) => Err(Status::Conflict),
+            Err(_) => Err(Status::InternalServerError),
+        }
+    } else if let Some(discord_id) = discord_id {
+        match get_ckey_by_discord_id(discord_id, &database.pool).await {
+            Ok(ckey) => Ok(GenericResponse::Success(Value::String(ckey))),
+            Err(DatabaseError::NotLinked) => Err(Status::Conflict),
+            Err(_) => Err(Status::InternalServerError),
+        }
+    } else {
+        Err(Status::BadRequest)
     }
 }

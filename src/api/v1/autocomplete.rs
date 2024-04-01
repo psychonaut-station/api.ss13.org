@@ -28,3 +28,16 @@ pub async fn ckey(
 
     Ok(GenericResponse::Success(ckeys))
 }
+
+#[get("/autocomplete/ic_name?<ic_name>")]
+pub async fn ic_name(
+    ic_name: &str,
+    database: &State<Database>,
+    _api_key: ApiKey,
+) -> Result<GenericResponse<Vec<IcName>>, Status> {
+    let Ok(ic_names) = get_ic_names(ic_name, &database.pool).await else {
+        return Err(Status::InternalServerError);
+    };
+
+    Ok(GenericResponse::Success(ic_names))
+}
