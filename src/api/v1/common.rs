@@ -7,11 +7,9 @@ use rocket::{
 };
 use serde::Serialize;
 use serde_json::json;
-use std::{io::Cursor, time::SystemTime};
+use std::io::Cursor;
 
 use crate::config::Config;
-
-use super::server::Status as ServerStatus;
 
 #[derive(Debug, Serialize)]
 pub enum GenericResponse<R> {
@@ -60,17 +58,6 @@ impl<R: Serialize> Responder<'_, 'static> for GenericResponse<R> {
             .sized_body(json.len(), Cursor::new(json))
             .ok()
     }
-}
-
-#[derive(Debug, Default)]
-pub struct Cache {
-    pub server: Option<CacheEntry<Vec<ServerStatus>>>,
-}
-
-#[derive(Debug)]
-pub struct CacheEntry<T> {
-    pub data: T,
-    pub expires: SystemTime,
 }
 
 pub struct ApiKey;

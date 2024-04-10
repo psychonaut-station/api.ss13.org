@@ -1,18 +1,24 @@
+use once_cell::sync::Lazy;
 use rocket::{get, State};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::{
     sync::Arc,
-    time::{Duration, SystemTime},
+    time::{Duration, Instant},
 };
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 use crate::{
     byond::{self, ServerStatus},
     config::{Config, Server},
 };
 
-use super::{Cache, CacheEntry, GenericResponse};
+use super::GenericResponse;
+
+type ServerStatusCache = Option<(Instant, Vec<Status>)>;
+
+static LAST_SERVER_STATUS: Lazy<Arc<RwLock<ServerStatusCache>>> =
+    Lazy::new(|| Arc::new(RwLock::new(None)));
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Status(Value);
@@ -41,15 +47,13 @@ impl Status {
 }
 
 #[get("/server")]
-pub async fn index(
-    config: &State<Config>,
-    cache: &State<Arc<Mutex<Cache>>>,
-) -> GenericResponse<Vec<Status>> {
-    let mut cache = cache.lock().await;
-
-    if let Some(cache) = &cache.server {
-        if SystemTime::now() < cache.expires {
-            return GenericResponse::Success(cache.data.clone());
+pub async fn index(config: &State<Config>) -> GenericResponse<Vec<Status>> {
+    {
+        let last_server_status = LAST_SERVER_STATUS.read().await;
+        if let Some((last_update, server_status)) = &*last_server_status {
+            if last_update.elapsed() < Duration::from_secs(30) {
+                return GenericResponse::Success(server_status.clone());
+            }
         }
     }
 
@@ -68,10 +72,8 @@ pub async fn index(
     }
 
     if should_cache {
-        cache.server = Some(CacheEntry {
-            data: response.clone(),
-            expires: SystemTime::now() + Duration::from_secs(30),
-        });
+        let mut last_server_status = LAST_SERVER_STATUS.write().await;
+        *last_server_status = Some((Instant::now(), response.clone()));
     }
 
     GenericResponse::Success(response)
