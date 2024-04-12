@@ -1,4 +1,6 @@
-use lazy_static::lazy_static;
+use std::sync::Arc;
+
+use once_cell::sync::Lazy;
 use reqwest::Client;
 
 pub mod discord;
@@ -6,6 +8,4 @@ mod error;
 
 pub use error::Error;
 
-lazy_static! {
-    pub static ref REQWEST_CLIENT: Client = Client::new();
-}
+pub static REQWEST_CLIENT: Lazy<Arc<Client>> = Lazy::new(|| Arc::new(Client::new()));

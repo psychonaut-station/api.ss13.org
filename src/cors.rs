@@ -1,12 +1,13 @@
 use rocket::http::Method;
 use rocket_cors::{AllowedHeaders, AllowedOrigins, Cors, CorsOptions};
+use std::collections::HashSet;
 
 pub fn cors() -> Result<Cors, rocket_cors::Error> {
     let allowed_origins = AllowedOrigins::some_regex(&["^https?://.+"]);
-    let allowed_methods = vec![Method::Get].into_iter().map(From::from).collect();
+    let allowed_methods = HashSet::from([Method::Get.into()]);
     let allowed_headers =
         AllowedHeaders::some(&["Accept", "Authorization", "Content-Type", "X-CSRF-Token"]);
-    let expose_headers = vec!["Link".to_string()].into_iter().collect();
+    let expose_headers = HashSet::from(["Link".to_string()]);
 
     CorsOptions {
         allowed_origins,

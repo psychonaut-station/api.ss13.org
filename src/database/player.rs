@@ -1,54 +1,35 @@
-use rocket::futures::StreamExt as _;
-use serde::{ser::SerializeStruct as _, Serialize, Serializer};
-use sqlx::{
-    pool::PoolConnection,
-    types::chrono::{NaiveDate, NaiveDateTime},
-    Executor as _, MySql, MySqlPool, Row as _,
-};
 use std::net::IpAddr;
+
+use chrono::{NaiveDate, NaiveDateTime};
+use rocket::futures::StreamExt as _;
+use serde::Serialize;
+use sqlx::{pool::PoolConnection, Executor as _, MySql, MySqlPool, Row as _};
 
 use super::error::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Player {
     pub ckey: String,
     pub byond_key: Option<String>,
+    #[serde(with = "crate::serde::datetime")]
     pub first_seen: NaiveDateTime,
+    #[serde(with = "crate::serde::datetime")]
     pub last_seen: NaiveDateTime,
     pub first_seen_round: Option<u32>,
     pub last_seen_round: Option<u32>,
     pub ip: IpAddr,
     pub cid: String,
+    #[serde(with = "crate::serde::opt_date")]
     pub byond_age: Option<NaiveDate>,
-}
-
-impl Serialize for Player {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("Player", 9)?;
-        state.serialize_field("ckey", &self.ckey)?;
-        state.serialize_field("byond_key", &self.byond_key)?;
-        state.serialize_field("first_seen", &self.first_seen.to_string())?;
-        state.serialize_field("last_seen", &self.last_seen.to_string())?;
-        state.serialize_field("first_seen_round", &self.first_seen_round)?;
-        state.serialize_field("last_seen_round", &self.last_seen_round)?;
-        state.serialize_field("ip", &self.ip.to_string())?;
-        state.serialize_field("cid", &self.cid)?;
-        state.serialize_field(
-            "byond_age",
-            &self.byond_age.as_ref().map(ToString::to_string),
-        )?;
-        state.end()
-    }
 }
 
 pub async fn get_player(ckey: &str, pool: &MySqlPool) -> Result<Player, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = sqlx::query("SELECT ckey, byond_key, firstseen, firstseen_round_id, lastseen, lastseen_round_id, INET_NTOA(ip), computerid, accountjoindate FROM player WHERE LOWER(ckey) = ?");
-    let query = query.bind(ckey.to_lowercase());
+    let query = sqlx::query(
+        "SELECT ckey, byond_key, firstseen, firstseen_round_id, lastseen, lastseen_round_id, INET_NTOA(ip), computerid, accountjoindate FROM player WHERE LOWER(ckey) = ?"
+    )
+    .bind(ckey.to_lowercase());
 
     let Ok(row) = connection.fetch_one(query).await else {
         return Err(Error::PlayerNotFound);
@@ -82,8 +63,8 @@ pub async fn get_top_roletime(job: &str, pool: &MySqlPool) -> Result<Vec<JobRole
 
     let query = sqlx::query(
         "SELECT ckey, minutes FROM role_time WHERE LOWER(job) = ? ORDER BY minutes DESC LIMIT 15",
-    );
-    let query = query.bind(job.to_lowercase());
+    )
+    .bind(job.to_lowercase());
 
     let mut roletimes = Vec::new();
 
@@ -118,8 +99,8 @@ pub async fn get_roletime(ckey: &str, pool: &MySqlPool) -> Result<Vec<PlayerRole
 
     let query = sqlx::query(
         "SELECT job, minutes FROM role_time WHERE LOWER(ckey) = ? ORDER BY minutes DESC",
-    );
-    let query = query.bind(ckey.to_lowercase());
+    )
+    .bind(ckey.to_lowercase());
 
     let mut roletimes = Vec::new();
 
@@ -153,8 +134,8 @@ pub async fn get_jobs(job: &str, pool: &MySqlPool) -> Result<Vec<String>, Error>
 
     let query = sqlx::query(
         "SELECT DISTINCT job FROM role_time WHERE LOWER(job) LIKE ? ORDER BY job ASC LIMIT 25",
-    );
-    let query = query.bind(format!("%{}%", job.to_lowercase()));
+    )
+    .bind(format!("%{}%", job.to_lowercase()));
 
     let mut jobs = Vec::new();
 
@@ -178,8 +159,8 @@ pub async fn get_jobs(job: &str, pool: &MySqlPool) -> Result<Vec<String>, Error>
 pub async fn get_ckeys(ckey: &str, pool: &MySqlPool) -> Result<Vec<String>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = sqlx::query("SELECT ckey FROM player WHERE ckey LIKE ? ORDER BY ckey LIMIT 25");
-    let query = query.bind(format!("{ckey}%"));
+    let query = sqlx::query("SELECT ckey FROM player WHERE ckey LIKE ? ORDER BY ckey LIMIT 25")
+        .bind(format!("{ckey}%"));
 
     let mut ckeys = Vec::new();
 
@@ -200,53 +181,31 @@ pub async fn get_ckeys(ckey: &str, pool: &MySqlPool) -> Result<Vec<String>, Erro
     Ok(ckeys)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Ban {
     pub id: u32,
+    #[serde(with = "crate::serde::datetime")]
     pub bantime: NaiveDateTime,
     pub round_id: Option<u32>,
     pub role: Option<String>,
+    #[serde(with = "crate::serde::opt_datetime")]
     pub expiration_time: Option<NaiveDateTime>,
     pub reason: String,
     pub ckey: Option<String>,
     pub a_ckey: String,
     pub edits: Option<String>,
+    #[serde(with = "crate::serde::opt_datetime")]
     pub unbanned_datetime: Option<NaiveDateTime>,
     pub unbanned_ckey: Option<String>,
-}
-
-impl Serialize for Ban {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("Ban", 11)?;
-        state.serialize_field("id", &self.id)?;
-        state.serialize_field("bantime", &self.bantime.to_string())?;
-        state.serialize_field("round_id", &self.round_id)?;
-        state.serialize_field("role", &self.role)?;
-        state.serialize_field(
-            "expiration_time",
-            &self.expiration_time.as_ref().map(ToString::to_string),
-        )?;
-        state.serialize_field("reason", &self.reason)?;
-        state.serialize_field("ckey", &self.ckey)?;
-        state.serialize_field("a_ckey", &self.a_ckey)?;
-        state.serialize_field("edits", &self.edits)?;
-        state.serialize_field(
-            "unbanned_datetime",
-            &self.unbanned_datetime.as_ref().map(ToString::to_string),
-        )?;
-        state.serialize_field("unbanned_ckey", &self.unbanned_ckey)?;
-        state.end()
-    }
 }
 
 pub async fn get_ban(ckey: &str, pool: &MySqlPool) -> Result<Vec<Ban>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = sqlx::query("SELECT id, bantime, round_id, role, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE LOWER(ckey) = ?");
-    let query = query.bind(ckey.to_lowercase());
+    let query = sqlx::query(
+        "SELECT id, bantime, round_id, role, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE LOWER(ckey) = ?"
+    )
+    .bind(ckey.to_lowercase());
 
     let mut bans = Vec::new();
 
@@ -285,14 +244,8 @@ pub async fn get_ban(ckey: &str, pool: &MySqlPool) -> Result<Vec<Ban>, Error> {
 }
 
 pub async fn player_exists(ckey: &str, connection: &mut PoolConnection<MySql>) -> bool {
-    let query = sqlx::query("SELECT 1 FROM player WHERE LOWER(ckey) = ?");
-    let query = query.bind(ckey.to_lowercase());
-
-    if connection.fetch_one(query).await.is_ok() {
-        return true;
-    }
-
-    false
+    let query = sqlx::query("SELECT 1 FROM player WHERE LOWER(ckey) = ?").bind(ckey.to_lowercase());
+    connection.fetch_one(query).await.is_ok()
 }
 
 #[derive(Debug, Serialize)]
@@ -306,8 +259,8 @@ pub async fn get_ic_names(ic_name: &str, pool: &MySqlPool) -> Result<Vec<IcName>
 
     let query = sqlx::query(
         "SELECT DISTINCT name, byondkey FROM death WHERE name LIKE ? ORDER BY name ASC LIMIT 25",
-    );
-    let query = query.bind(format!("%{ic_name}%"));
+    )
+    .bind(format!("%{ic_name}%"));
 
     let mut ckeys = Vec::new();
 

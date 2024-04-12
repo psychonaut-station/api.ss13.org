@@ -1,5 +1,6 @@
-use sqlx::{mysql::MySqlPoolOptions, MySqlPool};
 use std::time::Duration;
+
+use sqlx::{mysql::MySqlPoolOptions, MySqlPool};
 use urlencoding::encode;
 
 use crate::config;

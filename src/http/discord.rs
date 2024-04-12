@@ -11,7 +11,7 @@ pub struct User {
     pub avatar: Option<String>,
 }
 
-pub async fn get_user(id: &str, token: &str) -> Result<User, Error> {
+pub async fn get_user(id: i64, token: &str) -> Result<User, Error> {
     let url = format!("https://discord.com/api/v10/users/{id}");
 
     let response = REQWEST_CLIENT
