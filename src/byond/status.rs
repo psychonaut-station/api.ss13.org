@@ -1,8 +1,9 @@
-use serde::Serialize;
-use serde_repr::Serialize_repr;
 use std::str::FromStr;
 
-use super::{topic, Error, ResponseDataType};
+use serde::Serialize;
+use serde_repr::Serialize_repr;
+
+use super::{topic, Error, Response};
 
 #[derive(Debug, Default, Serialize_repr)]
 #[repr(u8)]
@@ -25,7 +26,7 @@ impl FromStr for GameState {
             "2" => Ok(GameState::SettingUp),
             "3" => Ok(GameState::Playing),
             "4" => Ok(GameState::Finished),
-            _ => Err(Error::ParseKey("game state".into(), s.into())),
+            _ => Err(Error::ParseKey("game state", s.into())),
         }
     }
 }
@@ -49,7 +50,7 @@ impl FromStr for SecurityLevel {
             "blue" => Ok(SecurityLevel::Blue),
             "red" => Ok(SecurityLevel::Red),
             "delta" => Ok(SecurityLevel::Delta),
-            _ => Err(Error::ParseKey("security level".into(), s.into())),
+            _ => Err(Error::ParseKey("security level", s.into())),
         }
     }
 }
@@ -85,10 +86,10 @@ impl FromStr for ShuttleMode {
             "stranded" => Ok(ShuttleMode::Stranded),
             "disabled" => Ok(ShuttleMode::Disabled),
             "escape" => Ok(ShuttleMode::Escape),
-            "endgame: game over" => Ok(ShuttleMode::Endgame),
+            "endgame:+game+over" => Ok(ShuttleMode::Endgame),
             "recharging" => Ok(ShuttleMode::Recharging),
             "landing" => Ok(ShuttleMode::Landing),
-            _ => Err(Error::ParseKey("shuttle mode".into(), s.into())),
+            _ => Err(Error::ParseKey("shuttle mode", s.into())),
         }
     }
 }
@@ -126,18 +127,15 @@ pub struct ServerStatus {
 }
 
 pub async fn status(address: &str) -> super::Result<ServerStatus> {
-    let (response_type, data) = topic(address, "?status").await?;
+    let response = topic(address, "?status").await?;
 
-    if matches!(response_type, ResponseDataType::String) {
+    if let Response::String(response) = response {
         let mut status = ServerStatus::default();
-        let data = String::from_utf8_lossy(&data[0..data.len() - 1]);
 
-        for pairs in data.split('&') {
-            let mut pair = pairs.split('=');
-            let key = pair
-                .next()
-                .ok_or(Error::InvalidResponse(data.to_string()))?;
-            let value = pair.next().unwrap_or("");
+        for params in response.split('&') {
+            let mut pairs = params.split('=');
+            let key = pairs.next().ok_or(Error::InvalidResponse)?;
+            let value = pairs.next().unwrap_or("");
 
             match key {
                 "version" => {
@@ -219,7 +217,7 @@ pub async fn status(address: &str) -> super::Result<ServerStatus> {
                     status.interviews = value == "1";
                 }
                 "shuttle_mode" => {
-                    status.shuttle_mode = value.replace('+', " ").parse()?;
+                    status.shuttle_mode = value.parse()?;
                 }
                 "shuttle_timer" => {
                     status.shuttle_timer = value.parse()?;
@@ -233,5 +231,5 @@ pub async fn status(address: &str) -> super::Result<ServerStatus> {
         return Ok(status);
     }
 
-    Err(Error::ResponseTypeMismatch(data))
+    Err(Error::UnexpectedType(response))
 }

@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use rocket::{
     catch,
     http::{ContentType, Status},
@@ -7,7 +9,6 @@ use rocket::{
 };
 use serde::Serialize;
 use serde_json::json;
-use std::io::Cursor;
 
 use crate::config::Config;
 

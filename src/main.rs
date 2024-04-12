@@ -9,6 +9,7 @@ mod config;
 mod cors;
 mod database;
 mod http;
+mod serde;
 
 #[rocket::main]
 async fn main() -> Result<(), Error> {

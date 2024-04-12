@@ -33,8 +33,9 @@ pub async fn verify_discord(
     }
 
     let query =
-        sqlx::query("UPDATE discord_links SET discord_id = ?, valid = 1 WHERE one_time_token = ?");
-    let query = query.bind(discord_id).bind(one_time_token);
+        sqlx::query("UPDATE discord_links SET discord_id = ?, valid = 1 WHERE one_time_token = ?")
+            .bind(discord_id)
+            .bind(one_time_token);
 
     connection.execute(query).await?;
 
@@ -67,8 +68,10 @@ pub async fn force_verify_discord(
 
     let query = sqlx::query(
         "INSERT INTO discord_links (discord_id, ckey, one_time_token, valid) VALUES (?, ?, ?, 1)",
-    );
-    let query = query.bind(discord_id).bind(ckey.to_lowercase()).bind(token);
+    )
+    .bind(discord_id)
+    .bind(ckey.to_lowercase())
+    .bind(token);
 
     connection.execute(query).await?;
 
@@ -83,33 +86,25 @@ pub async fn unverify_discord(
     let mut connection = pool.acquire().await?;
 
     if let Some(discord_id) = discord_id {
-        match ckey_by_discord_id(discord_id, &mut connection).await {
-            Ok(ckey) => {
-                let query = sqlx::query(
-                    "UPDATE discord_links SET valid = 0 WHERE discord_id = ? AND valid = 1",
-                );
-                let query = query.bind(discord_id);
+        let ckey = ckey_by_discord_id(discord_id, &mut connection).await?;
 
-                connection.execute(query).await?;
+        let query =
+            sqlx::query("UPDATE discord_links SET valid = 0 WHERE discord_id = ? AND valid = 1")
+                .bind(discord_id);
 
-                return Ok(ckey);
-            }
-            Err(e) => return Err(e),
-        }
+        connection.execute(query).await?;
+
+        return Ok(ckey);
     } else if let Some(ckey) = ckey {
-        match discord_id_by_ckey(ckey, &mut connection).await {
-            Ok(discord_id) => {
-                let query = sqlx::query(
-                    "UPDATE discord_links SET valid = 0 WHERE LOWER(ckey) = ? AND valid = 1",
-                );
-                let query = query.bind(ckey.to_lowercase());
+        let discord_id = discord_id_by_ckey(ckey, &mut connection).await?;
 
-                connection.execute(query).await?;
+        let query =
+            sqlx::query("UPDATE discord_links SET valid = 0 WHERE LOWER(ckey) = ? AND valid = 1")
+                .bind(ckey.to_lowercase());
 
-                return Ok(format!("@{}", discord_id));
-            }
-            Err(e) => return Err(e),
-        }
+        connection.execute(query).await?;
+
+        return Ok(format!("@{discord_id}"));
     }
 
     Err(Error::InvalidArguments)
@@ -119,8 +114,8 @@ async fn ckey_by_discord_id(
     discord_id: &str,
     connection: &mut PoolConnection<MySql>,
 ) -> Result<String, Error> {
-    let query = sqlx::query("SELECT ckey FROM discord_links WHERE discord_id = ? AND valid = 1");
-    let query = query.bind(discord_id);
+    let query = sqlx::query("SELECT ckey FROM discord_links WHERE discord_id = ? AND valid = 1")
+        .bind(discord_id);
 
     if let Ok(row) = connection.fetch_one(query).await {
         return Ok(row.try_get("ckey")?);
@@ -134,8 +129,8 @@ pub async fn discord_id_by_ckey(
     connection: &mut PoolConnection<MySql>,
 ) -> Result<i64, Error> {
     let query =
-        sqlx::query("SELECT discord_id FROM discord_links WHERE LOWER(ckey) = ? AND valid = 1");
-    let query = query.bind(ckey.to_lowercase());
+        sqlx::query("SELECT discord_id FROM discord_links WHERE LOWER(ckey) = ? AND valid = 1")
+            .bind(ckey.to_lowercase());
 
     if let Ok(row) = connection.fetch_one(query).await {
         return Ok(row.try_get("discord_id")?);
@@ -156,7 +151,7 @@ async fn discord_id_by_token(
     let mut sql = "SELECT discord_id FROM discord_links WHERE one_time_token = ?".to_string();
 
     if only_valid {
-        sql = format!("{sql} AND valid = 1");
+        sql.push_str(" AND valid = 1");
     }
 
     let query = sqlx::query(&sql).bind(one_time_token);
@@ -175,10 +170,13 @@ pub async fn fetch_discord_by_ckey(
 ) -> Result<User, Error> {
     let mut connection = pool.acquire().await?;
 
-    match discord_id_by_ckey(ckey, &mut connection).await {
-        Ok(discord_id) => Ok(discord::get_user(&discord_id.to_string(), discord_token).await?),
-        Err(e) => Err(e),
-    }
+    let discord_id = discord_id_by_ckey(ckey, &mut connection).await?;
+
+    connection.close().await?;
+
+    let user = discord::get_user(discord_id, discord_token).await?;
+
+    Ok(user)
 }
 
 pub async fn get_ckey_by_discord_id(discord_id: &str, pool: &MySqlPool) -> Result<String, Error> {
@@ -199,8 +197,7 @@ async fn generate_one_time_token(connection: &mut PoolConnection<MySql>) -> Stri
         let mut token = String::new();
 
         for _ in 0..6 {
-            let word = common_words[rand::thread_rng().gen_range(0..common_words.len())];
-            token.push_str(word);
+            token.push_str(common_words[rand::thread_rng().gen_range(0..common_words.len())]);
             token.push('-');
         }
 

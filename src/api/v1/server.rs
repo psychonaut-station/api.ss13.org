@@ -1,11 +1,12 @@
-use once_cell::sync::Lazy;
-use rocket::{get, State};
-use serde::Serialize;
-use serde_json::{json, Value};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
+
+use once_cell::sync::Lazy;
+use rocket::{get, State};
+use serde::Serialize;
+use serde_json::{json, Value};
 use tokio::sync::RwLock;
 
 use crate::{
