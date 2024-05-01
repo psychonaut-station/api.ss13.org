@@ -17,7 +17,7 @@ pub async fn verify_discord(
         return Err(Error::DiscordAlreadyLinked(ckey));
     }
 
-    let regex = Regex::new(r"^([a-z']+-){5}[a-z']+$").unwrap();
+    let regex = Regex::new(r"^([A-z']+-){5}[A-z']+$").unwrap();
     if !regex.is_match(one_time_token) {
         return Err(Error::TokenInvalid);
     }
