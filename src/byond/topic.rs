@@ -19,6 +19,7 @@ struct ResponseHeader {
 #[derive(Debug)]
 pub enum Response {
     Null,
+    #[allow(dead_code)]
     Float(f32),
     String(String),
 }
