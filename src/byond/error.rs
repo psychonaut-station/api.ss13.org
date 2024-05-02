@@ -14,8 +14,8 @@ pub enum Error {
     InvalidResponse,
     #[error("the response was not the expected type: {0:?}")]
     UnexpectedType(Response),
-    #[error("failed to parse key: {0} {1}")]
-    ParseKey(&'static str, String),
-    #[error("unknown key: {0}")]
-    UnknownKey(String),
+    #[error("failed to parse param: {0} {1}")]
+    ParseParam(&'static str, String),
+    #[error("unknown param: {0}")]
+    UnknownParam(String),
 }
