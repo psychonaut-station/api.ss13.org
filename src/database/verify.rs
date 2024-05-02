@@ -22,10 +22,9 @@ pub async fn verify_discord(
         return Err(Error::TokenInvalid);
     }
 
-    if let Err(Error::TokenInvalid) =
-        discord_id_by_token(one_time_token, false, &mut connection).await
-    {
-        return Err(Error::TokenInvalid);
+    match discord_id_by_token(one_time_token, false, &mut connection).await {
+        Err(Error::NotLinked) => {}
+        _ => return Err(Error::TokenInvalid),
     }
 
     if let Ok(discord_id) = discord_id_by_token(one_time_token, true, &mut connection).await {
