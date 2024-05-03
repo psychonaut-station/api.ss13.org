@@ -16,6 +16,7 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
             routes![
                 player::index,
                 player::ban,
+                player::characters,
                 player::roletime,
                 player::top,
                 player::discord,

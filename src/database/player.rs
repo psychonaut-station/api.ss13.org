@@ -281,3 +281,33 @@ pub async fn get_ic_names(ic_name: &str, pool: &MySqlPool) -> Result<Vec<IcName>
 
     Ok(ckeys)
 }
+
+pub async fn get_characters(ckey: &str, pool: &MySqlPool) -> Result<Vec<String>, Error> {
+    let mut connection = pool.acquire().await?;
+
+    let query = sqlx::query(
+        "SELECT name FROM death WHERE byondkey = ? GROUP BY name HAVING COUNT(*) > 1 ORDER BY COUNT(*) DESC"
+    )
+    .bind(ckey.to_lowercase());
+
+    let mut characters = Vec::new();
+
+    {
+        let mut rows = connection.fetch(query);
+
+        while let Some(row) = rows.next().await {
+            let row = row?;
+
+            characters.push(row.try_get("name")?);
+        }
+    }
+
+    if characters.is_empty() && !player_exists(ckey, &mut connection).await {
+        connection.close().await?;
+        return Err(Error::PlayerNotFound);
+    }
+
+    connection.close().await?;
+
+    Ok(characters)
+}
