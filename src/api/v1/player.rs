@@ -35,6 +35,19 @@ pub async fn ban(
     }
 }
 
+#[get("/player/characters?<ckey>")]
+pub async fn characters(
+    ckey: &str,
+    database: &State<Database>,
+    _api_key: ApiKey,
+) -> Result<GenericResponse<Vec<String>>, Status> {
+    match get_characters(ckey, &database.pool).await {
+        Ok(characters) => Ok(GenericResponse::Success(characters)),
+        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Err(_) => Err(Status::InternalServerError),
+    }
+}
+
 #[get("/player/roletime?<ckey>")]
 pub async fn roletime(
     ckey: &str,
