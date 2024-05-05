@@ -3,17 +3,18 @@ use thiserror::Error;
 
 use crate::{config::Config, cors::cors, database::Database};
 
-mod api;
 mod byond;
 mod config;
 mod cors;
 mod database;
 mod http;
+mod routes;
 mod serde;
 
 #[rocket::main]
 async fn main() -> Result<(), Error> {
-    let config = Config::load()?;
+    let config = Config::read_from_file()?;
+    let database = Database::new(&config.database)?;
 
     let provider = RocketConfig {
         address: config.address,
@@ -23,15 +24,13 @@ async fn main() -> Result<(), Error> {
         ..Default::default()
     };
 
-    let database = Database::new(&config.database)?;
-
     let rocket = rocket::custom(provider)
         .attach(cors()?)
         .manage(config)
         .manage(database)
         .register("/", catchers![empty_catcher]);
 
-    let rocket = api::mount(rocket);
+    let rocket = routes::mount(rocket);
 
     rocket.launch().await?;
 

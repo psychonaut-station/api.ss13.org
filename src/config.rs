@@ -33,7 +33,7 @@ pub struct Server {
 }
 
 impl Config {
-    pub fn load() -> Result<Self, Error> {
+    pub fn read_from_file() -> Result<Self, Error> {
         Ok(toml::from_str(&read_to_string("config.toml")?)?)
     }
 }
