@@ -15,14 +15,16 @@ impl Database {
             .max_connections(1)
             .idle_timeout(Duration::from_secs(30));
 
-        let pool = options.connect_lazy(&format!(
+        let url = format!(
             "mysql://{}:{}@{}:{}/{}",
             config.user,
             encode(&config.password),
             config.host,
             config.port,
             config.database
-        ))?;
+        );
+
+        let pool = options.connect_lazy(&url)?;
 
         Ok(Self { pool })
     }
