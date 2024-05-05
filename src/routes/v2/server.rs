@@ -14,7 +14,7 @@ use crate::{
     config::{Config, Server},
 };
 
-use super::GenericResponse;
+use super::Json;
 
 type ServerStatusCache = Option<(Instant, Vec<Status>)>;
 
@@ -48,12 +48,12 @@ impl Status {
 }
 
 #[get("/server")]
-pub async fn index(config: &State<Config>) -> GenericResponse<Vec<Status>> {
+pub async fn index(config: &State<Config>) -> Json<Vec<Status>> {
     {
         let last_server_status = LAST_SERVER_STATUS.read().await;
         if let Some((last_update, server_status)) = &*last_server_status {
             if last_update.elapsed() < Duration::from_secs(30) {
-                return GenericResponse::Success(server_status.clone());
+                return Json::Ok(server_status.clone());
             }
         }
     }
@@ -77,5 +77,5 @@ pub async fn index(config: &State<Config>) -> GenericResponse<Vec<Status>> {
         *last_server_status = Some((Instant::now(), response.clone()));
     }
 
-    GenericResponse::Success(response)
+    Json::Ok(response)
 }
