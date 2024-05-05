@@ -21,28 +21,24 @@ pub async fn index(
     database: &State<Database>,
     _api_key: ApiKey,
 ) -> Result<Json<Option<String>>, Status> {
-    if let Some(one_time_token) = data.one_time_token {
-        match verify_discord(data.discord_id, one_time_token, &database.pool).await {
-            Ok(ckey) => Ok(Json::Ok(Some(ckey))),
-            Err(Error::DiscordAlreadyLinked(ckey)) => Ok(Json::Conflict(Some(ckey))),
-            Err(Error::CkeyAlreadyLinked(discord_id)) => {
-                Ok(Json::Conflict(Some(format!("@{discord_id}"))))
-            }
-            Err(Error::TokenInvalid) => Err(Status::NotFound),
-            Err(_) => Err(Status::InternalServerError),
-        }
-    } else if let Some(ckey) = data.ckey {
-        match force_verify_discord(data.discord_id, ckey, &database.pool).await {
-            Ok(_) => Ok(Json::Ok(None)),
-            Err(Error::DiscordAlreadyLinked(ckey)) => Ok(Json::Conflict(Some(ckey))),
-            Err(Error::CkeyAlreadyLinked(discord_id)) => {
-                Ok(Json::Conflict(Some(format!("@{discord_id}"))))
-            }
-            Err(Error::PlayerNotFound) => Err(Status::NotFound),
-            Err(_) => Err(Status::InternalServerError),
-        }
-    } else {
-        Err(Status::BadRequest)
+    if data.one_time_token.is_some() ^ data.ckey.is_none() {
+        return Err(Status::BadRequest);
+    }
+
+    match verify_discord(
+        data.discord_id,
+        data.one_time_token,
+        data.ckey,
+        &database.pool,
+    )
+    .await
+    {
+        Ok(ckey) => Ok(Json::Ok(ckey)),
+        Err(Error::DiscordInUse(ckey)) => Ok(Json::Conflict(Some(ckey))),
+        Err(Error::CkeyInUse(discord_id)) => Ok(Json::Conflict(Some(format!("@{discord_id}")))),
+        Err(Error::TokenInvalid) => Err(Status::NotFound),
+        Err(Error::PlayerNotFound) => Err(Status::NotFound),
+        Err(_) => Err(Status::InternalServerError),
     }
 }
 
