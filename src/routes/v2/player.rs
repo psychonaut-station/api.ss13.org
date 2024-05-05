@@ -82,20 +82,24 @@ pub async fn discord(
     config: &State<Config>,
     _api_key: ApiKey,
 ) -> Result<Json<Value>, Status> {
+    if ckey.is_some() ^ discord_id.is_none() {
+        return Err(Status::BadRequest);
+    }
+
     if let Some(ckey) = ckey {
-        match fetch_discord_by_ckey(ckey, &config.discord_token, &database.pool).await {
+        return match fetch_discord_by_ckey(ckey, &config.discord_token, &database.pool).await {
             Ok(user) => Ok(Json::Ok(json!(user))),
             Err(Error::PlayerNotFound) => Err(Status::NotFound),
             Err(Error::NotLinked) => Err(Status::Conflict),
             Err(_) => Err(Status::InternalServerError),
-        }
+        };
     } else if let Some(discord_id) = discord_id {
-        match get_ckey_by_discord_id(discord_id, &database.pool).await {
+        return match get_ckey_by_discord_id(discord_id, &database.pool).await {
             Ok(ckey) => Ok(Json::Ok(Value::String(ckey))),
             Err(Error::NotLinked) => Err(Status::Conflict),
             Err(_) => Err(Status::InternalServerError),
-        }
-    } else {
-        Err(Status::BadRequest)
+        };
     }
+
+    unreachable!()
 }
