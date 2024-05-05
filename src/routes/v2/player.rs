@@ -3,21 +3,21 @@ use serde_json::{json, Value};
 
 use crate::{
     config::Config,
-    database::{error::Error as DatabaseError, *},
+    database::{error::Error, *},
     Database,
 };
 
-use super::{common::ApiKey, GenericResponse};
+use super::{common::ApiKey, Json};
 
 #[get("/player?<ckey>")]
 pub async fn index(
     ckey: &str,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<GenericResponse<Player>, Status> {
+) -> Result<Json<Player>, Status> {
     match get_player(ckey, &database.pool).await {
-        Ok(player) => Ok(GenericResponse::Success(player)),
-        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Ok(player) => Ok(Json::Ok(player)),
+        Err(Error::PlayerNotFound) => Err(Status::NotFound),
         Err(_) => Err(Status::InternalServerError),
     }
 }
@@ -27,10 +27,10 @@ pub async fn ban(
     ckey: &str,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<GenericResponse<Vec<Ban>>, Status> {
+) -> Result<Json<Vec<Ban>>, Status> {
     match get_ban(ckey, &database.pool).await {
-        Ok(bans) => Ok(GenericResponse::Success(bans)),
-        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Ok(bans) => Ok(Json::Ok(bans)),
+        Err(Error::PlayerNotFound) => Err(Status::NotFound),
         Err(_) => Err(Status::InternalServerError),
     }
 }
@@ -40,10 +40,10 @@ pub async fn characters(
     ckey: &str,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<GenericResponse<Vec<String>>, Status> {
+) -> Result<Json<Vec<String>>, Status> {
     match get_characters(ckey, &database.pool).await {
-        Ok(characters) => Ok(GenericResponse::Success(characters)),
-        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Ok(characters) => Ok(Json::Ok(characters)),
+        Err(Error::PlayerNotFound) => Err(Status::NotFound),
         Err(_) => Err(Status::InternalServerError),
     }
 }
@@ -53,10 +53,10 @@ pub async fn roletime(
     ckey: &str,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<GenericResponse<Vec<PlayerRoletime>>, Status> {
+) -> Result<Json<Vec<PlayerRoletime>>, Status> {
     match get_roletime(ckey, &database.pool).await {
-        Ok(roletimes) => Ok(GenericResponse::Success(roletimes)),
-        Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
+        Ok(roletimes) => Ok(Json::Ok(roletimes)),
+        Err(Error::PlayerNotFound) => Err(Status::NotFound),
         Err(_) => Err(Status::InternalServerError),
     }
 }
@@ -66,12 +66,12 @@ pub async fn top(
     job: &str,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<GenericResponse<Vec<JobRoletime>>, Status> {
+) -> Result<Json<Vec<JobRoletime>>, Status> {
     let Ok(roletimes) = get_top_roletime(job, &database.pool).await else {
         return Err(Status::InternalServerError);
     };
 
-    Ok(GenericResponse::Success(roletimes))
+    Ok(Json::Ok(roletimes))
 }
 
 #[get("/player/discord?<ckey>&<discord_id>")]
@@ -81,18 +81,18 @@ pub async fn discord(
     database: &State<Database>,
     config: &State<Config>,
     _api_key: ApiKey,
-) -> Result<GenericResponse<Value>, Status> {
+) -> Result<Json<Value>, Status> {
     if let Some(ckey) = ckey {
         match fetch_discord_by_ckey(ckey, &config.discord_token, &database.pool).await {
-            Ok(user) => Ok(GenericResponse::Success(json!(user))),
-            Err(DatabaseError::PlayerNotFound) => Err(Status::NotFound),
-            Err(DatabaseError::NotLinked) => Err(Status::Conflict),
+            Ok(user) => Ok(Json::Ok(json!(user))),
+            Err(Error::PlayerNotFound) => Err(Status::NotFound),
+            Err(Error::NotLinked) => Err(Status::Conflict),
             Err(_) => Err(Status::InternalServerError),
         }
     } else if let Some(discord_id) = discord_id {
         match get_ckey_by_discord_id(discord_id, &database.pool).await {
-            Ok(ckey) => Ok(GenericResponse::Success(Value::String(ckey))),
-            Err(DatabaseError::NotLinked) => Err(Status::Conflict),
+            Ok(ckey) => Ok(Json::Ok(Value::String(ckey))),
+            Err(Error::NotLinked) => Err(Status::Conflict),
             Err(_) => Err(Status::InternalServerError),
         }
     } else {
