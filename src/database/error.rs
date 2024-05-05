@@ -10,12 +10,10 @@ pub enum Error {
     Http(#[from] crate::http::Error),
     #[error("Player not found")]
     PlayerNotFound,
-    #[error("Invalid arguments provided")]
-    InvalidArguments,
     #[error("Discord account is already linked to {0}")]
-    DiscordAlreadyLinked(String),
+    DiscordInUse(String),
     #[error("Ckey is already linked to {0}")]
-    CkeyAlreadyLinked(i64),
+    CkeyInUse(i64),
     #[error("Account is not linked")]
     NotLinked,
     #[error("Token does not exist or is invalid")]

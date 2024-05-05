@@ -8,73 +8,70 @@ use super::{error::Error, player_exists};
 
 pub async fn verify_discord(
     discord_id: &str,
-    one_time_token: &str,
+    one_time_token: Option<&str>,
+    ckey: Option<&str>,
     pool: &MySqlPool,
-) -> Result<String, Error> {
+) -> Result<Option<String>, Error> {
     let mut connection = pool.acquire().await?;
 
     if let Ok(ckey) = ckey_by_discord_id(discord_id, &mut connection).await {
-        return Err(Error::DiscordAlreadyLinked(ckey));
+        return Err(Error::DiscordInUse(ckey));
     }
 
-    let regex = Regex::new(r"^([A-z']+-){5}[A-z']+$").unwrap();
-    if !regex.is_match(one_time_token) {
-        return Err(Error::TokenInvalid);
+    if let Some(one_time_token) = one_time_token {
+        let regex = Regex::new(r"^([A-z']+-){5}[A-z']+$").unwrap();
+        if !regex.is_match(one_time_token) {
+            return Err(Error::TokenInvalid);
+        }
+
+        match discord_id_by_token(one_time_token, false, &mut connection).await {
+            Err(Error::NotLinked) => {}
+            _ => return Err(Error::TokenInvalid),
+        }
+
+        if let Ok(discord_id) = discord_id_by_token(one_time_token, true, &mut connection).await {
+            return Err(Error::CkeyInUse(discord_id));
+        }
+
+        let query = sqlx::query(
+            "UPDATE discord_links SET discord_id = ?, valid = 1 WHERE one_time_token = ?",
+        )
+        .bind(discord_id)
+        .bind(one_time_token);
+
+        connection.execute(query).await?;
+
+        let ckey = ckey_by_discord_id(discord_id, &mut connection).await?;
+
+        connection.close().await?;
+
+        return Ok(Some(ckey));
+    } else if let Some(ckey) = ckey {
+        if !player_exists(ckey, &mut connection).await {
+            return Err(Error::PlayerNotFound);
+        }
+
+        if let Ok(discord_id) = discord_id_by_ckey(ckey, &mut connection).await {
+            return Err(Error::CkeyInUse(discord_id));
+        }
+
+        let token = generate_one_time_token(&mut connection).await;
+        let discord_id = discord_id.parse::<i64>()?;
+
+        let query = sqlx::query(
+            "INSERT INTO discord_links (discord_id, ckey, one_time_token, valid) VALUES (?, ?, ?, 1)",
+        )
+        .bind(discord_id)
+        .bind(ckey.to_lowercase())
+        .bind(token);
+
+        connection.execute(query).await?;
+        connection.close().await?;
+
+        return Ok(None);
     }
 
-    match discord_id_by_token(one_time_token, false, &mut connection).await {
-        Err(Error::NotLinked) => {}
-        _ => return Err(Error::TokenInvalid),
-    }
-
-    if let Ok(discord_id) = discord_id_by_token(one_time_token, true, &mut connection).await {
-        return Err(Error::CkeyAlreadyLinked(discord_id));
-    }
-
-    let query =
-        sqlx::query("UPDATE discord_links SET discord_id = ?, valid = 1 WHERE one_time_token = ?")
-            .bind(discord_id)
-            .bind(one_time_token);
-
-    connection.execute(query).await?;
-
-    let ckey = ckey_by_discord_id(discord_id, &mut connection).await?;
-
-    Ok(ckey)
-}
-
-pub async fn force_verify_discord(
-    discord_id: &str,
-    ckey: &str,
-    pool: &MySqlPool,
-) -> Result<(), Error> {
-    let mut connection = pool.acquire().await?;
-
-    if let Ok(ckey) = ckey_by_discord_id(discord_id, &mut connection).await {
-        return Err(Error::DiscordAlreadyLinked(ckey));
-    }
-
-    if !player_exists(ckey, &mut connection).await {
-        return Err(Error::PlayerNotFound);
-    }
-
-    if let Ok(discord_id) = discord_id_by_ckey(ckey, &mut connection).await {
-        return Err(Error::CkeyAlreadyLinked(discord_id));
-    }
-
-    let token = generate_one_time_token(&mut connection).await;
-    let discord_id = discord_id.parse::<i64>()?;
-
-    let query = sqlx::query(
-        "INSERT INTO discord_links (discord_id, ckey, one_time_token, valid) VALUES (?, ?, ?, 1)",
-    )
-    .bind(discord_id)
-    .bind(ckey.to_lowercase())
-    .bind(token);
-
-    connection.execute(query).await?;
-
-    Ok(())
+    unreachable!()
 }
 
 pub async fn unverify_discord(
@@ -92,6 +89,7 @@ pub async fn unverify_discord(
                 .bind(discord_id);
 
         connection.execute(query).await?;
+        connection.close().await?;
 
         return Ok(ckey);
     } else if let Some(ckey) = ckey {
@@ -102,11 +100,12 @@ pub async fn unverify_discord(
                 .bind(ckey.to_lowercase());
 
         connection.execute(query).await?;
+        connection.close().await?;
 
         return Ok(format!("@{discord_id}"));
     }
 
-    Err(Error::InvalidArguments)
+    unreachable!()
 }
 
 async fn ckey_by_discord_id(
