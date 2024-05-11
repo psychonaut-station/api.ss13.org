@@ -1,5 +1,6 @@
 use rocket::{catch, catchers, http::Status, Config as RocketConfig, Request};
 use thiserror::Error;
+use tracing::info;
 
 use crate::{config::Config, cors::cors, database::Database};
 
@@ -13,8 +14,16 @@ mod serde;
 
 #[rocket::main]
 async fn main() -> Result<(), Error> {
+    let subscriber = tracing_subscriber::fmt().finish();
+    tracing::subscriber::set_global_default(subscriber)?;
+
     let config = Config::read_from_file()?;
     let database = Database::new(&config.database)?;
+
+    info!(
+        "Server has launched from http://{}:{}",
+        config.address, config.port
+    );
 
     let provider = RocketConfig {
         address: config.address,
@@ -47,4 +56,5 @@ enum Error {
     Cors(#[from] rocket_cors::Error),
     Rocket(#[from] rocket::Error),
     Sqlx(#[from] sqlx::Error),
+    SetGlobalDefault(#[from] tracing::subscriber::SetGlobalDefaultError),
 }
