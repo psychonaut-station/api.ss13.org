@@ -17,8 +17,6 @@ pub struct Player {
     pub last_seen: NaiveDateTime,
     pub first_seen_round: Option<u32>,
     pub last_seen_round: Option<u32>,
-    pub ip: IpAddr,
-    pub cid: String,
     #[serde(with = "crate::serde::opt_date")]
     pub byond_age: Option<NaiveDate>,
 }
@@ -42,8 +40,6 @@ pub async fn get_player(ckey: &str, pool: &MySqlPool) -> Result<Player, Error> {
         last_seen: row.try_get("lastseen")?,
         first_seen_round: row.try_get("firstseen_round_id")?,
         last_seen_round: row.try_get("lastseen_round_id")?,
-        ip: row.try_get("INET_NTOA(ip)")?,
-        cid: row.try_get("computerid")?,
         byond_age: row.try_get("accountjoindate")?,
     };
 
