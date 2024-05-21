@@ -47,9 +47,17 @@ impl<'r> FromRequest<'r> for ApiKey {
         };
 
         if request.headers().get_one("X-API-KEY") == Some(&config.secret) {
-            Outcome::Success(ApiKey)
-        } else {
-            Outcome::Error((Status::Unauthorized, ()))
+            return Outcome::Success(ApiKey);
         }
+
+        if request.headers().get_one("X-DEV-KEY") == Some(&config.dev_secret) {
+            if let Some(route) = request.route() {
+                if config.dev_routes.contains(route.uri.origin.path().as_str()) {
+                    return Outcome::Success(ApiKey);
+                }
+            }
+        }
+
+        Outcome::Error((Status::Unauthorized, ()))
     }
 }

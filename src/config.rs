@@ -1,6 +1,6 @@
 use rocket::config::LogLevel;
 use serde::Deserialize;
-use std::{fs::read_to_string, net::IpAddr};
+use std::{collections::HashSet, fs::read_to_string, net::IpAddr};
 use thiserror::Error;
 
 #[derive(Debug, Deserialize)]
@@ -8,6 +8,8 @@ pub struct Config {
     pub address: IpAddr,
     pub port: u16,
     pub secret: String,
+    pub dev_secret: String,
+    pub dev_routes: HashSet<String>,
     pub discord_token: String,
     pub cli_colors: bool,
     pub log_level: LogLevel,
