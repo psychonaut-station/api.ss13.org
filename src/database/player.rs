@@ -1,5 +1,3 @@
-use std::net::IpAddr;
-
 use chrono::{NaiveDate, NaiveDateTime};
 use rocket::futures::StreamExt as _;
 use serde::Serialize;
