@@ -1,19 +1,19 @@
-use rocket::http::Method;
-use rocket_cors::{AllowedHeaders, AllowedOrigins, Cors, CorsOptions};
 use std::collections::HashSet;
 
+use rocket::http::Method;
+use rocket_cors::{AllowedHeaders, AllowedOrigins, Cors, CorsOptions};
+
 pub fn cors() -> Result<Cors, rocket_cors::Error> {
-    let allowed_origins = AllowedOrigins::some_regex(&["^https?://.+"]);
-    let allowed_methods = HashSet::from([Method::Get.into()]);
-    let allowed_headers =
-        AllowedHeaders::some(&["Accept", "Authorization", "Content-Type", "X-CSRF-Token"]);
-    let expose_headers = HashSet::from(["Link".to_string()]);
+    let allowed_methods = [Method::Get.into(), Method::Options.into()];
+    let allowed_headers = ["Accept", "Authorization", "X-API-KEY", "X-DEV-KEY"];
+    let expose_headers = ["Content-Type".to_string(), "Content-Length".to_string()];
 
     CorsOptions {
-        allowed_origins,
-        allowed_methods,
-        allowed_headers,
-        expose_headers,
+        allowed_origins: AllowedOrigins::all(),
+        allowed_methods: HashSet::from(allowed_methods),
+        allowed_headers: AllowedHeaders::some(&allowed_headers),
+        expose_headers: HashSet::from(expose_headers),
+        send_wildcard: true,
         allow_credentials: false,
         max_age: Some(300),
         ..Default::default()
