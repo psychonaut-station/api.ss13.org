@@ -3,9 +3,13 @@ port = 3000
 secret = ""
 dev_secret = ""
 dev_routes = ["/v2/player"]
-discord_token = ""
 cli_colors = true
 log_level = "normal"
+
+[discord]
+token = ""
+guild = 0
+patreon_role = 0
 
 [database]
 user = "root"
