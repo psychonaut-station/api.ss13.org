@@ -2,6 +2,7 @@ use rocket::{routes, Build, Rocket};
 
 mod autocomplete;
 mod common;
+mod patreon;
 mod player;
 mod server;
 mod verify;
@@ -12,13 +13,13 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket.mount(
         "/v2",
         routes![
+            patreon::index,
             player::index,
             player::ban,
             player::characters,
             player::roletime,
             player::top,
             player::discord,
-            player::patreon,
             server::index,
             verify::index,
             verify::unverify,
