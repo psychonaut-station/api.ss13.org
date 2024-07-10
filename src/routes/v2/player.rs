@@ -5,7 +5,6 @@ use crate::{
     config::Config,
     database::{error::Error, *},
     Database,
-    http::discord::is_patron,
 };
 
 use super::{common::ApiKey, Json};
@@ -103,16 +102,4 @@ pub async fn discord(
     }
 
     unreachable!()
-}
-
-#[get("/player/patreon?<discord_id>")]
-pub async fn patreon(
-    discord_id: i64,
-    config: &State<Config>,
-) -> Result<Json<Value>, Status> {
-    let Ok(patron) = is_patron(config.discord.guild, discord_id, config.discord.patreon_role, &config.discord.token).await else {
-        return Err(Status::InternalServerError);
-    };
-
-    Ok(Json::Ok(json!({ "patron": patron })))
 }
