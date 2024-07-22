@@ -1,0 +1,61 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Run rustfmt
+        run: |
+          cargo fmt -- --check
+      - name: Run clippy
+        run: |
+          cargo clippy --locked -- -D warnings
+  build:
+    needs: lint
+    strategy:
+      matrix:
+        os: [ windows-latest, ubuntu-latest ]
+        include:
+          - os: windows-latest
+            name: Windows
+            rust-target: x86_64-pc-windows-msvc
+            ext: '.exe'
+          - os: ubuntu-latest
+            name: Linux
+            rust-target: x86_64-unknown-linux-gnu
+            ext: ''
+    runs-on: ${{ matrix.os }}
+    name: Build - ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.rust-target }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Run cargo build
+        run: |
+          cargo build --target ${{ matrix.rust-target }} --locked --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            target/${{ matrix.rust-target }}/release/api${{ matrix.ext }}
+          if-no-files-found: error
