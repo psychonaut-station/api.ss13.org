@@ -1,8 +1,12 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc};
 
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 
 use super::{Error, REQWEST_CLIENT};
+
+static DISCORD_API_LOCK: Lazy<Arc<Mutex<()>>> = Lazy::new(|| Arc::new(Mutex::new(())));
 
 #[derive(Debug, Deserialize)]
 struct ErrorMessage {
@@ -19,6 +23,8 @@ pub struct User {
 }
 
 pub async fn get_user(id: i64, token: &str) -> Result<User, Error> {
+    let _lock = DISCORD_API_LOCK.lock().await;
+
     let url = format!("https://discord.com/api/v10/users/{id}");
 
     let response = REQWEST_CLIENT
@@ -42,6 +48,8 @@ pub async fn get_guild_member(
     user_id: i64,
     token: &str,
 ) -> Result<GuildMember, Error> {
+    let _lock = DISCORD_API_LOCK.lock().await;
+
     let url = format!("https://discord.com/api/v10/guilds/{guild_id}/members/{user_id}");
 
     let response = REQWEST_CLIENT
