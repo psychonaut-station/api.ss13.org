@@ -40,7 +40,7 @@ pub async fn characters(
     ckey: &str,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<Json<Vec<String>>, Status> {
+) -> Result<Json<Vec<(String, i64)>>, Status> {
     match get_characters(ckey, &database.pool).await {
         Ok(characters) => Ok(Json::Ok(characters)),
         Err(Error::PlayerNotFound) => Err(Status::NotFound),

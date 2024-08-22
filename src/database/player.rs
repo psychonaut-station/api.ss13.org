@@ -1,4 +1,5 @@
 use chrono::{NaiveDate, NaiveDateTime};
+use const_format::concatcp;
 use rocket::futures::StreamExt as _;
 use serde::Serialize;
 use sqlx::{pool::PoolConnection, Executor as _, MySql, MySqlPool, Row as _};
@@ -276,12 +277,16 @@ pub async fn get_ic_names(ic_name: &str, pool: &MySqlPool) -> Result<Vec<IcName>
     Ok(ckeys)
 }
 
-pub async fn get_characters(ckey: &str, pool: &MySqlPool) -> Result<Vec<String>, Error> {
+pub async fn get_characters(ckey: &str, pool: &MySqlPool) -> Result<Vec<(String, i64)>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = sqlx::query(
-        "SELECT name FROM death WHERE byondkey = ? GROUP BY name HAVING COUNT(*) > 1 ORDER BY COUNT(*) DESC"
-    )
+    const EXCLUDED_ROLES: &str = "('Nightmare', 'Wizard', 'Nuclear Operative', 'Wizard (Midround)', 'Paradox Clone', 'Space Ninja', 'Fugitive', 'Syndicate Cyborg', 'Lone Operative', 'Maintenance Clown', 'Abductor', 'Operative (Midround)', 'Cyber Police', 'Syndicate Monkey Agent', 'apprentice', 'Glitch', 'Santa', 'Changeling', 'Changeling (Midround)', 'Syndicate Medical Cyborg', 'Operative Overwatch Agent', 'survivalist', 'Syndicate Assault Cyborg')";
+
+    let query = sqlx::query(concatcp!(
+        "SELECT name, COUNT(*) AS times FROM death WHERE byondkey = ? AND special NOT IN ",
+        EXCLUDED_ROLES,
+        " GROUP BY name ORDER BY times DESC"
+    ))
     .bind(ckey.to_lowercase());
 
     let mut characters = Vec::new();
@@ -292,7 +297,7 @@ pub async fn get_characters(ckey: &str, pool: &MySqlPool) -> Result<Vec<String>,
         while let Some(row) = rows.next().await {
             let row = row?;
 
-            characters.push(row.try_get("name")?);
+            characters.push((row.try_get("name")?, row.try_get("times")?));
         }
     }
 
