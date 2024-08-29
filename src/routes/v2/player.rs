@@ -74,6 +74,19 @@ pub async fn top(
     Ok(Json::Ok(roletimes))
 }
 
+#[get("/player/activity?<ckey>")]
+pub async fn activity(
+    ckey: &str,
+    database: &State<Database>,
+    _api_key: ApiKey,
+) -> Result<Json<Vec<(String, i64)>>, Status> {
+    match get_activity(ckey, &database.pool).await {
+        Ok(activity) => Ok(Json::Ok(activity)),
+        Err(Error::PlayerNotFound) => Err(Status::NotFound),
+        Err(_) => Err(Status::InternalServerError),
+    }
+}
+
 #[get("/player/discord?<ckey>&<discord_id>")]
 pub async fn discord(
     ckey: Option<&str>,

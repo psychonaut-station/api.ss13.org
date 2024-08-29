@@ -310,3 +310,36 @@ pub async fn get_characters(ckey: &str, pool: &MySqlPool) -> Result<Vec<(String,
 
     Ok(characters)
 }
+
+pub async fn get_activity(ckey: &str, pool: &MySqlPool) -> Result<Vec<(String, i64)>, Error> {
+    let mut connection = pool.acquire().await?;
+
+    let query = sqlx::query(
+        "SELECT DATE(datetime) AS date, COUNT(DISTINCT round_id) AS rounds FROM connection_log WHERE ckey = ? AND datetime >= DATE_SUB(CURDATE(), INTERVAL 180 DAY) GROUP BY date;"
+    )
+    .bind(ckey.to_lowercase());
+
+    let mut activity = Vec::new();
+
+    {
+        let mut rows = connection.fetch(query);
+
+        while let Some(row) = rows.next().await {
+            let row = row?;
+
+            let date: NaiveDate = row.try_get("date")?;
+            let date = date.format("%Y-%m-%d").to_string();
+
+            activity.push((date, row.try_get("rounds")?));
+        }
+    }
+
+    if activity.is_empty() && !player_exists(ckey, &mut connection).await {
+        connection.close().await?;
+        return Err(Error::PlayerNotFound);
+    }
+
+    connection.close().await?;
+
+    Ok(activity)
+}
