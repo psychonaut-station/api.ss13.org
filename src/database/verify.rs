@@ -19,7 +19,7 @@ pub async fn verify_discord(
     }
 
     if let Some(one_time_token) = one_time_token {
-        let regex = Regex::new(r"^([A-z']+-){5}[A-z']+$").unwrap();
+        let regex = Regex::new(r"^\d{3}-\d{3}$").unwrap();
         if !regex.is_match(one_time_token) {
             return Err(Error::TokenInvalid);
         }
