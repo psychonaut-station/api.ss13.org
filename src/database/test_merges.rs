@@ -19,7 +19,7 @@ pub async fn get_recent_test_merges(pool: &MySqlPool) -> Result<Vec<TestMerge>, 
     let mut connection = pool.acquire().await?;
 
     let query = sqlx::query(
-        "SELECT round_id, datetime, JSON_EXTRACT(json, '$.data.*.number') AS test_merges FROM tg.feedback WHERE key_name = 'testmerged_prs' ORDER BY round_id DESC LIMIT 200"
+        "SELECT round_id, datetime, JSON_EXTRACT(json, '$.data.*.number') AS test_merges FROM feedback WHERE key_name = 'testmerged_prs' ORDER BY round_id DESC LIMIT 200"
     );
 
     let mut recent_test_merges = Vec::new();

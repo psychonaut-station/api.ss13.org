@@ -178,11 +178,10 @@ pub async fn get_ckeys(ckey: &str, pool: &MySqlPool) -> Result<Vec<String>, Erro
 
 #[derive(Debug, Serialize)]
 pub struct Ban {
-    pub id: u32,
     #[serde(with = "crate::serde::datetime")]
     pub bantime: NaiveDateTime,
     pub round_id: Option<u32>,
-    pub role: Option<String>,
+    pub roles: Option<String>,
     #[serde(with = "crate::serde::opt_datetime")]
     pub expiration_time: Option<NaiveDateTime>,
     pub reason: String,
@@ -194,13 +193,31 @@ pub struct Ban {
     pub unbanned_ckey: Option<String>,
 }
 
-pub async fn get_ban(ckey: &str, pool: &MySqlPool) -> Result<Vec<Ban>, Error> {
+pub async fn get_ban(
+    ckey: &str,
+    permanent: bool,
+    since: Option<&str>,
+    pool: &MySqlPool,
+) -> Result<Vec<Ban>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let query = sqlx::query(
-        "SELECT id, bantime, round_id, role, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE LOWER(ckey) = ?"
-    )
-    .bind(ckey.to_lowercase());
+    let mut sql = "SELECT id, bantime, round_id, GROUP_CONCAT(role ORDER BY role SEPARATOR ', ') AS roles, expiration_time, reason, ckey, a_ckey, edits, unbanned_datetime, unbanned_ckey FROM ban WHERE LOWER(ckey) = ?".to_string();
+
+    if permanent {
+        sql.push_str(" AND expiration_time IS NULL");
+    }
+
+    if since.is_some() {
+        sql.push_str(" AND bantime > ?");
+    }
+
+    sql.push_str(" GROUP BY bantime");
+
+    let mut query = sqlx::query(&sql).bind(ckey.to_lowercase());
+
+    if let Some(since) = since {
+        query = query.bind(since);
+    }
 
     let mut bans = Vec::new();
 
@@ -211,10 +228,9 @@ pub async fn get_ban(ckey: &str, pool: &MySqlPool) -> Result<Vec<Ban>, Error> {
             let ban = row?;
 
             let ban = Ban {
-                id: ban.try_get("id")?,
                 bantime: ban.try_get("bantime")?,
                 round_id: ban.try_get("round_id")?,
-                role: ban.try_get("role")?,
+                roles: ban.try_get("roles")?,
                 expiration_time: ban.try_get("expiration_time")?,
                 reason: ban.try_get("reason")?,
                 ckey: ban.try_get("ckey")?,

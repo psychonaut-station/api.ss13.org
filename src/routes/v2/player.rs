@@ -22,13 +22,15 @@ pub async fn index(
     }
 }
 
-#[get("/player/ban?<ckey>")]
+#[get("/player/ban?<ckey>&<permanent>&<since>")]
 pub async fn ban(
     ckey: &str,
+    permanent: Option<bool>,
+    since: Option<&str>,
     database: &State<Database>,
     _api_key: ApiKey,
 ) -> Result<Json<Vec<Ban>>, Status> {
-    match get_ban(ckey, &database.pool).await {
+    match get_ban(ckey, permanent.unwrap_or(false), since, &database.pool).await {
         Ok(bans) => Ok(Json::Ok(bans)),
         Err(Error::PlayerNotFound) => Err(Status::NotFound),
         Err(_) => Err(Status::InternalServerError),
