@@ -166,7 +166,10 @@ pub async fn status(address: &str) -> super::Result<ServerStatus> {
                 "interviews" => status.interviews = value == "1",
                 "shuttle_mode" => status.shuttle_mode = value.parse()?,
                 "shuttle_timer" => status.shuttle_timer = value.parse()?,
-                _ => return Err(Error::UnknownParam(key.to_string())),
+                _ => {
+                    #[cfg(debug_assertions)]
+                    tracing::warn!("Status topic responsed with unknown param: {key} = {value} ({address})");
+                }
             }
         }
 

@@ -16,6 +16,7 @@ pub enum Error {
     UnexpectedType(Response),
     #[error("failed to parse param: {0} {1}")]
     ParseParam(&'static str, String),
+    #[allow(dead_code)]
     #[error("unknown param: {0}")]
     UnknownParam(String),
 }
