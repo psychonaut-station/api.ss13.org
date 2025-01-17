@@ -52,14 +52,14 @@ pub async fn patrons(
     config: &State<Config>,
     _api_key: ApiKey,
 ) -> Result<Json<Value>, Status> {
-    let discord = &config.discord
+    let discord = &config.discord;
 
     let user_ids: Vec<String> = match search_role_members(discord.guild, discord.patreon_role, &discord.token).await {
         Ok(response) => response.members.into_iter().map(|guild_member| guild_member.member.user.id).collect(),
-        Err(e) => return Err(Status::InternalServerError),
+        Err(_) => return Err(Status::InternalServerError)?,
     };
 
-    let pool = &database.pool;
+    let pool: &MySqlPool = &database.pool;
 
     let mut connection = pool.acquire().await.map_err(|_| Status::InternalServerError)?;
 
