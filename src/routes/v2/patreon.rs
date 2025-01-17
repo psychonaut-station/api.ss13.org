@@ -59,7 +59,7 @@ pub async fn patrons(
         Err(_) => return Err(Status::InternalServerError)?,
     };
 
-    let pool: &MySqlPool = &database.pool;
+    let pool = &database.pool;
 
     let mut connection = pool.acquire().await.map_err(|_| Status::InternalServerError)?;
 
