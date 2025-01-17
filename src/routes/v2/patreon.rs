@@ -5,7 +5,7 @@ use sqlx::MySqlPool;
 use crate::{
     config::{self, Config},
     database::{error::Error, *},
-    http::{self, discord::get_guild_member},
+    http::{self, discord::get_guild_member, discord::search_role_members},
     Database,
 };
 
@@ -44,4 +44,36 @@ async fn is_patron(ckey: &str, pool: &MySqlPool, discord: &config::Discord) -> R
     };
 
     Ok(member.roles.contains(&discord.patreon_role.to_string()))
+}
+
+#[get("/patrons")]
+pub async fn patrons(
+    database: &State<Database>,
+    config: &State<Config>,
+    _api_key: ApiKey,
+) -> Result<Json<Value>, Status> {
+    let discord = &config.discord
+
+    let user_ids: Vec<String> = match search_role_members(discord.guild, discord.patreon_role, &discord.token).await {
+        Ok(response) => response.members.into_iter().map(|guild_member| guild_member.member.user.id).collect(),
+        Err(e) => return Err(Status::InternalServerError),
+    };
+
+    let pool = &database.pool;
+
+    let mut connection = pool.acquire().await.map_err(|_| Status::InternalServerError)?;
+
+    let mut results = Vec::new();
+    for user_id in user_ids {
+        match ckey_by_discord_id(&user_id, &mut connection).await {
+            Ok(result) => results.push(result),
+            Err(Error::NotLinked) => continue,
+            Err(_) => return Err(Status::InternalServerError),
+        }
+    }
+
+    connection.close().await.map_err(|_| Status::InternalServerError)?;
+
+
+    Ok(Json::Ok(json!({ "patrons": results })))
 }

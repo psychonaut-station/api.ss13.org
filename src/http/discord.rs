@@ -2,6 +2,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tokio::sync::Mutex;
 
 use super::{Error, REQWEST_CLIENT};
@@ -46,6 +47,7 @@ pub async fn get_user(id: i64, token: &str) -> Result<User, Error> {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GuildMember {
     pub roles: HashSet<String>, // other fields are not required for now (https://discord.com/developers/docs/resources/guild#guild-member-object)
+    pub member: Member,
 }
 
 pub async fn get_guild_member(
@@ -71,4 +73,53 @@ pub async fn get_guild_member(
     };
 
     Ok(member)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Member {
+    pub user: User,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GuildMembersResponse {
+    pub guild_id: String,
+    pub members: Vec<GuildMember>,
+}
+
+pub async fn search_role_members(
+    guild_id: i64,
+    role_id: i64,
+    token: &str,
+) -> Result<GuildMembersResponse, Error> {
+    let _lock = DISCORD_API_LOCK.lock().await;
+
+    let url = format!("https://discord.com/api/v9/guilds/{guild_id}/members-search");
+
+    let body = json!( {
+        "or_query": {},
+        "and_query": {
+            "role_ids": {
+                "and_query": [role_id.to_string()]
+            }
+        },
+        "limit": 1000
+    });
+
+    let response = REQWEST_CLIENT
+        .post(url)
+        .header("Authorization", format!("Bot {token}"))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await?
+        .text()
+        .await?;
+
+    let Ok(guild_members_response) = serde_json::from_str(&response) else {
+        let error: ErrorMessage = serde_json::from_str(&response)?;
+        return Err(Error::Discord(error.code));
+    };
+
+    Ok(guild_members_response)
+
 }
