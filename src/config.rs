@@ -17,6 +17,7 @@ pub struct Config {
     pub log_level: LogLevel,
     pub database: Database,
     pub servers: Vec<Server>,
+    pub proxy: Proxy,
 }
 
 #[derive(Debug, Deserialize)]
@@ -41,6 +42,12 @@ pub struct Server {
     pub address: String,
     pub connection_address: String,
     pub error_message: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Proxy {
+    pub discord: String,
+    pub token: String,
 }
 
 impl Config {

@@ -21,14 +21,19 @@ pub async fn index(
     config: &State<Config>,
     _api_key: ApiKey,
 ) -> Result<Json<Value>, Status> {
-    let Ok(patron) = is_patron(ckey, &database.pool, &config.discord).await else {
+    let Ok(patron) = is_patron(ckey, &database.pool, &config.discord, &config.proxy).await else {
         return Err(Status::InternalServerError);
     };
 
     Ok(Json::Ok(json!({ "patron": patron })))
 }
 
-async fn is_patron(ckey: &str, pool: &MySqlPool, discord: &config::Discord) -> Result<bool, Error> {
+async fn is_patron(
+    ckey: &str,
+    pool: &MySqlPool,
+    discord: &config::Discord,
+    proxy: &config::Proxy,
+) -> Result<bool, Error> {
     let mut connection = pool.acquire().await?;
 
     let Ok(discord_id) = discord_id_by_ckey(ckey, &mut connection).await else {
@@ -37,12 +42,11 @@ async fn is_patron(ckey: &str, pool: &MySqlPool, discord: &config::Discord) -> R
 
     connection.close().await?;
 
-    let member = match get_guild_member(discord.guild, discord_id, &discord.token).await {
+    let member = match get_guild_member(discord.guild, discord_id, &discord.token, proxy).await {
         Ok(member) => member,
-        Err(http::Error::Discord(code)) => match code {
-            10007 | 10013 => return Ok(false),
-            _ => return Err(http::Error::Discord(code))?,
-        },
+        Err(http::Error::Discord(10007 | 10013)) => {
+            return Ok(false);
+        }
         Err(e) => return Err(e)?,
     };
 
@@ -55,14 +59,18 @@ pub async fn patrons(
     config: &State<Config>,
     _api_key: ApiKey,
 ) -> Result<Json<Value>, Status> {
-    let Ok(patrons) = get_patrons(&database.pool, &config.discord).await else {
+    let Ok(patrons) = get_patrons(&database.pool, &config.discord, &config.proxy).await else {
         return Err(Status::InternalServerError);
     };
 
     Ok(Json::Ok(json!({ "patrons": patrons })))
 }
 
-async fn get_patrons(pool: &MySqlPool, discord: &config::Discord) -> Result<Vec<String>, Error> {
+async fn get_patrons(
+    pool: &MySqlPool,
+    discord: &config::Discord,
+    proxy: &config::Proxy,
+) -> Result<Vec<String>, Error> {
     let mut connection = pool.acquire().await?;
 
     let query = format!(
@@ -70,7 +78,7 @@ async fn get_patrons(pool: &MySqlPool, discord: &config::Discord) -> Result<Vec<
         discord.patreon_role
     );
 
-    let members = search_members(discord.guild, query, &discord.token).await?;
+    let members = search_members(discord.guild, query, &discord.token, proxy).await?;
 
     let mut ckeys = Vec::new();
 
