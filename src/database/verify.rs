@@ -166,6 +166,7 @@ pub async fn fetch_discord_by_ckey(
     ckey: &str,
     discord_token: &str,
     pool: &MySqlPool,
+    proxy: &crate::config::Proxy,
 ) -> Result<User, Error> {
     let mut connection = pool.acquire().await?;
 
@@ -173,7 +174,7 @@ pub async fn fetch_discord_by_ckey(
 
     connection.close().await?;
 
-    let user = discord::get_user(discord_id, discord_token).await?;
+    let user = discord::get_user(discord_id, discord_token, proxy).await?;
 
     Ok(user)
 }

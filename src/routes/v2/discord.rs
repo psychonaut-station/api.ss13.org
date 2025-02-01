@@ -20,7 +20,7 @@ pub async fn user(
         return Err(Status::BadRequest);
     };
 
-    match discord::get_user(id, &config.discord.token).await {
+    match discord::get_user(id, &config.discord.token, &config.proxy).await {
         Ok(user) => Ok(Json::Ok(user)),
         Err(http::Error::Discord(code)) => match code {
             10013 => Err(Status::NotFound),
@@ -40,7 +40,14 @@ pub async fn member(
         return Err(Status::BadRequest);
     };
 
-    match discord::get_guild_member(config.discord.guild, id, &config.discord.token).await {
+    match discord::get_guild_member(
+        config.discord.guild,
+        id,
+        &config.discord.token,
+        &config.proxy,
+    )
+    .await
+    {
         Ok(member) => Ok(Json::Ok(member)),
         Err(http::Error::Discord(code)) => match code {
             10007 | 10013 => Err(Status::NotFound),

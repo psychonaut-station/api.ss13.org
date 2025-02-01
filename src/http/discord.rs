@@ -22,11 +22,12 @@ pub struct User {
     pub avatar: Option<String>,
 }
 
-pub async fn get_user(id: i64, token: &str) -> Result<User, Error> {
+pub async fn get_user(id: i64, token: &str, proxy: &crate::config::Proxy) -> Result<User, Error> {
     let _lock = DISCORD_API_LOCK.lock().await;
 
     let response = REQWEST_CLIENT
-        .get(format!("https://discord.com/api/v10/users/{id}"))
+        .get(format!("https://{}/api/v10/users/{id}", proxy.discord))
+        .header("X-PROXY-TOKEN", proxy.token.clone())
         .header("Authorization", format!("Bot {token}"))
         .send()
         .await?
@@ -52,13 +53,16 @@ pub async fn get_guild_member(
     guild_id: i64,
     user_id: i64,
     token: &str,
+    proxy: &crate::config::Proxy,
 ) -> Result<GuildMember, Error> {
     let _lock = DISCORD_API_LOCK.lock().await;
 
     let response = REQWEST_CLIENT
         .get(format!(
-            "https://discord.com/api/v10/guilds/{guild_id}/members/{user_id}"
+            "https://{}/api/v10/guilds/{guild_id}/members/{user_id}",
+            proxy.discord
         ))
+        .header("X-PROXY-TOKEN", proxy.token.clone())
         .header("Authorization", format!("Bot {token}"))
         .send()
         .await?
@@ -77,13 +81,16 @@ pub async fn search_members(
     guild_id: i64,
     query: String,
     token: &str,
+    proxy: &crate::config::Proxy,
 ) -> Result<Vec<GuildMember>, Error> {
     let _lock = DISCORD_API_LOCK.lock().await;
 
     let response = REQWEST_CLIENT
         .post(format!(
-            "https://discord.com/api/v10/guilds/{guild_id}/members-search"
+            "https://{}/api/v10/guilds/{guild_id}/members-search",
+            proxy.discord
         ))
+        .header("X-PROXY-TOKEN", proxy.token.clone())
         .header("Authorization", format!("Bot {token}"))
         .header("Content-Type", "application/json")
         .body(query)

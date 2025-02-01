@@ -102,7 +102,14 @@ pub async fn discord(
     }
 
     if let Some(ckey) = ckey {
-        return match fetch_discord_by_ckey(ckey, &config.discord.token, &database.pool).await {
+        return match fetch_discord_by_ckey(
+            ckey,
+            &config.discord.token,
+            &database.pool,
+            &config.proxy,
+        )
+        .await
+        {
             Ok(user) => Ok(Json::Ok(json!(user))),
             Err(Error::PlayerNotFound) => Err(Status::NotFound),
             Err(Error::NotLinked) => Err(Status::Conflict),
