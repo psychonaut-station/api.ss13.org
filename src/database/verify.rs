@@ -109,7 +109,7 @@ pub async fn unverify_discord(
     unreachable!()
 }
 
-async fn ckey_by_discord_id(
+pub async fn ckey_by_discord_id(
     discord_id: &str,
     connection: &mut PoolConnection<MySql>,
 ) -> Result<String, Error> {

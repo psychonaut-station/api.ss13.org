@@ -5,7 +5,10 @@ use sqlx::MySqlPool;
 use crate::{
     config::{self, Config},
     database::{error::Error, *},
-    http::{self, discord::get_guild_member},
+    http::{
+        self,
+        discord::{get_guild_member, search_members},
+    },
     Database,
 };
 
@@ -44,4 +47,42 @@ async fn is_patron(ckey: &str, pool: &MySqlPool, discord: &config::Discord) -> R
     };
 
     Ok(member.roles.contains(&discord.patreon_role.to_string()))
+}
+
+#[get("/patreon/patrons")]
+pub async fn patrons(
+    database: &State<Database>,
+    config: &State<Config>,
+    _api_key: ApiKey,
+) -> Result<Json<Value>, Status> {
+    let Ok(patrons) = get_patrons(&database.pool, &config.discord).await else {
+        return Err(Status::InternalServerError);
+    };
+
+    Ok(Json::Ok(json!({ "patrons": patrons })))
+}
+
+async fn get_patrons(pool: &MySqlPool, discord: &config::Discord) -> Result<Vec<String>, Error> {
+    let mut connection = pool.acquire().await?;
+
+    let query = format!(
+        "{{\"or_query\":{{}},\"and_query\":{{\"role_ids\":{{\"and_query\":[\"{}\"]}}}},\"limit\":1000}}",
+        discord.patreon_role
+    );
+
+    let members = search_members(discord.guild, query, &discord.token).await?;
+
+    let mut ckeys = Vec::new();
+
+    for member in members {
+        match ckey_by_discord_id(&member.user.id, &mut connection).await {
+            Ok(ckey) => ckeys.push(ckey),
+            Err(Error::NotLinked) => continue,
+            Err(e) => return Err(e),
+        }
+    }
+
+    connection.close().await?;
+
+    Ok(ckeys)
 }

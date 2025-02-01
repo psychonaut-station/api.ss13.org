@@ -15,6 +15,7 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
         "/v2",
         routes![
             patreon::index,
+            patreon::patrons,
             player::index,
             player::ban,
             player::characters,

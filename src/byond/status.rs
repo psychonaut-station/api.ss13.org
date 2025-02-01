@@ -168,7 +168,9 @@ pub async fn status(address: &str) -> super::Result<ServerStatus> {
                 "shuttle_timer" => status.shuttle_timer = value.parse()?,
                 _ => {
                     #[cfg(debug_assertions)]
-                    tracing::warn!("Status topic responsed with unknown param: {key} = {value} ({address})");
+                    tracing::warn!(
+                        "Status topic responsed with unknown param: {key} = {value} ({address})"
+                    );
                 }
             }
         }

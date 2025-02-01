@@ -25,10 +25,8 @@ pub struct User {
 pub async fn get_user(id: i64, token: &str) -> Result<User, Error> {
     let _lock = DISCORD_API_LOCK.lock().await;
 
-    let url = format!("https://discord.com/api/v10/users/{id}");
-
     let response = REQWEST_CLIENT
-        .get(url)
+        .get(format!("https://discord.com/api/v10/users/{id}"))
         .header("Authorization", format!("Bot {token}"))
         .send()
         .await?
@@ -45,7 +43,9 @@ pub async fn get_user(id: i64, token: &str) -> Result<User, Error> {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GuildMember {
-    pub roles: HashSet<String>, // other fields are not required for now (https://discord.com/developers/docs/resources/guild#guild-member-object)
+    // https://discord.com/developers/docs/resources/guild#guild-member-object
+    pub roles: HashSet<String>,
+    pub user: User,
 }
 
 pub async fn get_guild_member(
@@ -55,10 +55,10 @@ pub async fn get_guild_member(
 ) -> Result<GuildMember, Error> {
     let _lock = DISCORD_API_LOCK.lock().await;
 
-    let url = format!("https://discord.com/api/v10/guilds/{guild_id}/members/{user_id}");
-
     let response = REQWEST_CLIENT
-        .get(url)
+        .get(format!(
+            "https://discord.com/api/v10/guilds/{guild_id}/members/{user_id}"
+        ))
         .header("Authorization", format!("Bot {token}"))
         .send()
         .await?
@@ -71,4 +71,43 @@ pub async fn get_guild_member(
     };
 
     Ok(member)
+}
+
+pub async fn search_members(
+    guild_id: i64,
+    query: String,
+    token: &str,
+) -> Result<Vec<GuildMember>, Error> {
+    let _lock = DISCORD_API_LOCK.lock().await;
+
+    let response = REQWEST_CLIENT
+        .post(format!(
+            "https://discord.com/api/v10/guilds/{guild_id}/members-search"
+        ))
+        .header("Authorization", format!("Bot {token}"))
+        .header("Content-Type", "application/json")
+        .body(query)
+        .send()
+        .await?
+        .text()
+        .await?;
+
+    #[derive(Deserialize)]
+    struct Response {
+        pub members: Vec<ResponseMember>,
+    }
+
+    #[derive(Deserialize)]
+    struct ResponseMember {
+        pub member: GuildMember,
+    }
+
+    let Ok(response) = serde_json::from_str::<Response>(&response) else {
+        let error: ErrorMessage = serde_json::from_str(&response)?;
+        return Err(Error::Discord(error.code));
+    };
+
+    let members = response.members.into_iter().map(|m| m.member).collect();
+
+    Ok(members)
 }
