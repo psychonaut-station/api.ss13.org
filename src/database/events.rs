@@ -10,27 +10,27 @@ pub struct Death {
     pub name: String,
     pub job: String,
     pub pod: String,
-    pub brute: u32,
-    pub fire: u32,
-    pub oxy: u32,
-    pub tox: u32,
+    pub bruteloss: u16,
+    pub fireloss: u16,
+    pub oxyloss: u16,
+    pub toxloss: u16,
     pub last_words: Option<String>,
     pub suicide: bool,
-    pub round_id: u32,
+    pub round_id: Option<u32>,
     #[serde(with = "crate::serde::datetime")]
-    pub timestamp: NaiveDateTime,
+    pub tod: NaiveDateTime,
 }
 
 pub async fn get_deaths(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<Death>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let mut sql = "SELECT name, job, pod, brute, fire, oxy, tox, last_words, suicide, round_id, tod AS timestamp FROM death".to_string();
+    let mut sql = "SELECT name, job, pod, bruteloss, fireloss, oxyloss, toxloss, last_words, suicide, round_id, tod FROM death".to_string();
 
     if since.is_some() {
-        sql.push_str(" WHERE timestamp > ?");
+        sql.push_str(" WHERE tod > ?");
     }
 
-    sql.push_str(" GROUP BY timestamp");
+    sql.push_str(" GROUP BY tod");
 
     let mut query = sqlx::query(&sql);
 
@@ -50,14 +50,14 @@ pub async fn get_deaths(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<Dea
                 name: death.try_get("name")?,
                 job: death.try_get("job")?,
                 pod: death.try_get("pod")?,
-                brute: death.try_get("brute")?,
-                fire: death.try_get("fire")?,
-                oxy: death.try_get("oxy")?,
-                tox: death.try_get("tox")?,
+                bruteloss: death.try_get("bruteloss")?,
+                fireloss: death.try_get("fireloss")?,
+                oxyloss: death.try_get("oxyloss")?,
+                toxloss: death.try_get("toxloss")?,
                 last_words: death.try_get("last_words")?,
                 suicide: death.try_get("suicide")?,
                 round_id: death.try_get("round_id")?,
-                timestamp: death.try_get("timestamp")?,
+                tod: death.try_get("tod")?,
             };
 
             deaths.push(death);
@@ -65,6 +65,7 @@ pub async fn get_deaths(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<Dea
     }
 
     connection.close().await?;
+
     Ok(deaths)
 }
 
@@ -72,9 +73,9 @@ pub async fn get_deaths(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<Dea
 pub struct Citation {
     pub sender: String,
     pub recipient: String,
-    pub message: String,
-    pub fine: u32,
-    pub round_id: u32,
+    pub crime: String,
+    pub fine: Option<i32>,
+    pub round_id: Option<u32>,
     #[serde(with = "crate::serde::datetime")]
     pub timestamp: NaiveDateTime,
 }
@@ -83,7 +84,7 @@ pub async fn get_citations(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<
     let mut connection = pool.acquire().await?;
 
     let mut sql =
-        "SELECT round_id, sender_ic, recipient, message, fine, timestamp FROM citation".to_string();
+        "SELECT round_id, sender_ic, recipient, crime, fine, timestamp FROM citation".to_string();
 
     if since.is_some() {
         sql.push_str(" WHERE timestamp > ?");
@@ -109,7 +110,7 @@ pub async fn get_citations(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<
                 round_id: citation.try_get("round_id")?,
                 sender: citation.try_get("sender_ic")?,
                 recipient: citation.try_get("recipient")?,
-                message: citation.try_get("message")?,
+                crime: citation.try_get("crime")?,
                 fine: citation.try_get("fine")?,
                 timestamp: citation.try_get("timestamp")?,
             };
@@ -119,5 +120,6 @@ pub async fn get_citations(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<
     }
 
     connection.close().await?;
+
     Ok(citations)
 }
