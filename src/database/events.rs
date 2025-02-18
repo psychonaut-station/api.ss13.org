@@ -82,7 +82,8 @@ pub struct Citation {
 pub async fn get_citations(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<Citation>, Error> {
     let mut connection = pool.acquire().await?;
 
-    let mut sql = "SELECT round_id, sender_ic, recipient, message, fine, timestamp FROM citation".to_string();
+    let mut sql =
+        "SELECT round_id, sender_ic, recipient, message, fine, timestamp FROM citation".to_string();
 
     if since.is_some() {
         sql.push_str(" WHERE timestamp > ?");
