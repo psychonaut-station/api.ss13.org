@@ -21,7 +21,7 @@ pub struct Death {
     pub timestamp: NaiveDateTime,
 }
 
-+pub async fn get_deaths(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<Death>, Error> {
+pub async fn get_deaths(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<Death>, Error> {
     let mut connection = pool.acquire().await?;
 
     let mut sql = "SELECT name, job, pod, brute, fire, oxy, tox, last_words, suicide, round_id, tod AS timestamp FROM death".to_string();
@@ -79,7 +79,7 @@ pub struct Citation {
     pub timestamp: NaiveDateTime,
 }
 
-+pub async fn get_citations(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<Citation>, Error> {
+pub async fn get_citations(since: Option<&str>, pool: &MySqlPool) -> Result<Vec<Citation>, Error> {
     let mut connection = pool.acquire().await?;
 
     let mut sql = "SELECT round_id, sender_ic, recipient, message, fine, timestamp FROM citation".to_string();
