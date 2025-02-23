@@ -2,8 +2,8 @@ use chrono::{NaiveDate, NaiveDateTime};
 use const_format::concatcp;
 use rocket::futures::StreamExt as _;
 use serde::Serialize;
-use sqlx::{pool::PoolConnection, Executor as _, MySql, MySqlPool, Row as _, FromRow};
 use serde_json::{json, Value};
+use sqlx::{pool::PoolConnection, Executor as _, FromRow, MySql, MySqlPool, Row as _};
 
 use super::error::Error;
 
@@ -371,10 +371,7 @@ pub struct AchievementWithMetadata {
     pub achievement_description: String,
 }
 
-pub async fn get_achievements(
-    ckey: &str,
-    pool: &MySqlPool,
-) -> Result<Value, Error> {
+pub async fn get_achievements(ckey: &str, pool: &MySqlPool) -> Result<Value, Error> {
     let mut connection = pool.acquire().await?;
 
     if !player_exists(ckey, &mut connection).await {
@@ -394,4 +391,5 @@ pub async fn get_achievements(
     connection.close().await?;
 
     Ok(json!(achievements))
+
 }

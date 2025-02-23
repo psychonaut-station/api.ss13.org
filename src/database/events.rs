@@ -93,7 +93,7 @@ pub struct Death {
 pub async fn get_deaths(
     fetch_size: Option<u32>,
     page: Option<u32>,
-    pool: &MySqlPool
+    pool: &MySqlPool,
 ) -> Result<Vec<Death>, Error> {
     let current_round_id = get_round_id().await?;
     let fetch_size = fetch_size.unwrap_or(20);
@@ -161,7 +161,7 @@ pub struct Citation {
 pub async fn get_citations(
     fetch_size: Option<u32>,
     page: Option<u32>,
-    pool: &MySqlPool
+    pool: &MySqlPool,
 ) -> Result<Vec<Citation>, Error> {
     let current_round_id = get_round_id().await?;
     let fetch_size = fetch_size.unwrap_or(20);
@@ -214,7 +214,7 @@ pub async fn get_citations(
 
 pub async fn get_death_counts(
     limit: Option<i32>,
-    pool: &MySqlPool
+    pool: &MySqlPool,
 ) -> Result<HashMap<Option<u32>, i32>, Error> {
     let limit = limit.unwrap_or(100);
     let current_round_id = get_round_id().await?;
@@ -256,13 +256,15 @@ pub async fn get_death_counts(
 
 pub async fn get_citation_counts(
     limit: Option<i32>,
-    pool: &MySqlPool
+    pool: &MySqlPool,
 ) -> Result<HashMap<Option<u32>, i32>, Error> {
     let limit = limit.unwrap_or(100);
     let current_round_id = get_round_id().await?;
     let mut connection = pool.acquire().await?;
 
-    let mut sql = "SELECT round_id, COUNT(*) as citation_count FROM citation GROUP BY round_id".to_string();
+    let mut sql =
+        "SELECT round_id, COUNT(*) as citation_count FROM citation GROUP BY round_id".to_string();
+
     if current_round_id.is_some() {
         sql.push_str(" WHERE round_id < ? AND round_id >= ?");
     }
@@ -271,7 +273,9 @@ pub async fn get_citation_counts(
     let mut query = sqlx::query(&sql);
 
     if let Some(current_round_id) = current_round_id {
-        query = query.bind(current_round_id).bind(current_round_id as i32 - limit);
+        query = query
+            .bind(current_round_id)
+            .bind(current_round_id as i32 - limit);
     }
     query = query.bind(limit);
 
@@ -295,7 +299,7 @@ pub async fn get_citation_counts(
 
 pub async fn get_round_durations(
     limit: Option<i32>,
-    pool: &MySqlPool
+    pool: &MySqlPool,
 ) -> Result<HashMap<i32, i64>, Error> {
     let limit = limit.unwrap_or(100);
     let current_round_id = get_round_id().await?;
@@ -311,7 +315,9 @@ pub async fn get_round_durations(
 
     let mut query = sqlx::query(&sql);
     if let Some(current_round_id) = current_round_id {
-        query = query.bind(current_round_id).bind(current_round_id as i32 - limit);
+        query = query
+            .bind(current_round_id)
+            .bind(current_round_id as i32 - limit);
     }
 
     query = query.bind(limit);
@@ -327,7 +333,9 @@ pub async fn get_round_durations(
             let start_datetime: Option<NaiveDateTime> = duration.try_get("start_datetime")?;
             let end_datetime: Option<NaiveDateTime> = duration.try_get("end_datetime")?;
 
-            if let (Some(round_id), Some(start), Some(end)) = (round_id, start_datetime, end_datetime) {
+            if let (Some(round_id), Some(start), Some(end)) = 
+                (round_id, start_datetime, end_datetime) 
+            {
                 let duration_seconds = end.signed_duration_since(start).num_seconds();
                 let duration_minutes = (duration_seconds / 60) as i64;
                 durations.insert(round_id, duration_minutes);
@@ -340,7 +348,7 @@ pub async fn get_round_durations(
 
 pub async fn get_player_counts(
     limit: Option<i32>,
-    pool: &MySqlPool
+    pool: &MySqlPool,
 ) -> Result<HashMap<u32, i32>, Error> {
     let limit = limit.unwrap_or(100);
     match get_feedback_list("round_end_stats", "nested tally", Some(limit), pool).await {
@@ -363,7 +371,7 @@ pub async fn get_player_counts(
 }
 
 pub async fn get_round_id() -> Result<Option<u32>, Error> {
-    let config = Config::read_from_file().unwrap(); 
+    let config = Config::read_from_file().unwrap();
     let server: &Server = config.servers.iter().next().ok_or(Error::GameServerError)?;
     let status: Option<ServerStatus> = byond::status(&server.address).await.ok();
 
