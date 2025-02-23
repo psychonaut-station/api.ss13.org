@@ -391,5 +391,4 @@ pub async fn get_achievements(ckey: &str, pool: &MySqlPool) -> Result<Value, Err
     connection.close().await?;
 
     Ok(json!(achievements))
-
 }

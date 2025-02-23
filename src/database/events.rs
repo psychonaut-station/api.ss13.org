@@ -333,8 +333,8 @@ pub async fn get_round_durations(
             let start_datetime: Option<NaiveDateTime> = duration.try_get("start_datetime")?;
             let end_datetime: Option<NaiveDateTime> = duration.try_get("end_datetime")?;
 
-            if let (Some(round_id), Some(start), Some(end)) = 
-                (round_id, start_datetime, end_datetime) 
+            if let (Some(round_id), Some(start), Some(end)) =
+                (round_id, start_datetime, end_datetime)
             {
                 let duration_seconds = end.signed_duration_since(start).num_seconds();
                 let duration_minutes = (duration_seconds / 60) as i64;
