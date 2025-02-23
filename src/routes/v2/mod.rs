@@ -24,6 +24,7 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
             player::activity,
             player::top,
             player::discord,
+            player::achievements,
             server::index,
             verify::index,
             verify::unverify,
@@ -32,8 +33,9 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
             autocomplete::job,
             autocomplete::ckey,
             autocomplete::ic_name,
+            events::chart_data,
+            events::citations,
             events::deaths,
-            events::citations
         ],
     )
 }
