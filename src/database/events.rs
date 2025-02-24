@@ -2,13 +2,13 @@ use super::error::Error;
 use chrono::NaiveDateTime;
 use rocket::futures::StreamExt as _;
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use sqlx::{Executor as _, MySqlPool, Row as _};
 use std::collections::HashMap;
 
 use crate::{
-    byond::{self, ServerStatus},
-    config::{Config, Server},
+    byond::get_server_status,
+    config::Config,
 };
 
 #[derive(Debug, Serialize)]
@@ -337,7 +337,7 @@ pub async fn get_round_durations(
                 (round_id, start_datetime, end_datetime)
             {
                 let duration_seconds = end.signed_duration_since(start).num_seconds();
-                let duration_minutes = (duration_seconds / 60) as i64;
+                let duration_minutes = duration_seconds / 60;
                 durations.insert(round_id, duration_minutes);
             }
         }
@@ -372,13 +372,19 @@ pub async fn get_player_counts(
 
 pub async fn get_round_id() -> Result<Option<u32>, Error> {
     let config = Config::read_from_file().unwrap();
-    let server: &Server = config.servers.iter().next().ok_or(Error::GameServerError)?;
-    let status: Option<ServerStatus> = byond::status(&server.address).await.ok();
+    let server_status = get_server_status(&config).await;
+    let status = server_status.first();
 
     if let Some(status) = status {
-        let round_id = status.round_id;
-        Ok(Some(round_id))
-    } else {
-        Ok(None)
-    }
+        let status_json = json!(status);
+
+        // round_id'yi u32'ye çevirme ve Result<Option<u32>, Error> formatına uygun hale getirme
+        if let Some(round_id) = status_json["round_id"].as_u64() {
+            return Ok(Some(round_id as u32));
+        } else {
+            return Ok(None);
+        }
+    } 
+
+    Ok(None)
 }

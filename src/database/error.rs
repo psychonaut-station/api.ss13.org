@@ -18,6 +18,4 @@ pub enum Error {
     NotLinked,
     #[error("Token does not exist or is invalid")]
     TokenInvalid,
-    #[error("Cannot find or connect server")]
-    GameServerError,
 }
