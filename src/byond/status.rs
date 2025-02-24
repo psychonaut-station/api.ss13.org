@@ -1,18 +1,16 @@
 use std::{
-    sync::Arc,
     str::FromStr,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
 use once_cell::sync::Lazy;
 use serde::Serialize;
-use serde_repr::Serialize_repr;
 use serde_json::{json, Value};
+use serde_repr::Serialize_repr;
 use tokio::sync::RwLock;
 
-use crate::{
-    config::{Config, Server},
-};
+use crate::config::{Config, Server};
 
 use super::{topic, Error, Response};
 
@@ -253,4 +251,3 @@ pub async fn get_server_status(config: &Config) -> Vec<Status> {
 
     return response;
 }
-

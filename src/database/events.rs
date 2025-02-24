@@ -6,10 +6,7 @@ use serde_json::{json, Value};
 use sqlx::{Executor as _, MySqlPool, Row as _};
 use std::collections::HashMap;
 
-use crate::{
-    byond::get_server_status,
-    config::Config,
-};
+use crate::{byond::get_server_status, config::Config};
 
 #[derive(Debug, Serialize)]
 pub struct Feedback {
@@ -384,7 +381,7 @@ pub async fn get_round_id() -> Result<Option<u32>, Error> {
         } else {
             return Ok(None);
         }
-    } 
+    }
 
     Ok(None)
 }
