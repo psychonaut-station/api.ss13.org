@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use sqlx::{Executor as _, MySqlPool, Row as _};
 use std::collections::HashMap;
-
+use tracing::info;
 use crate::{byond::get_server_status, config::Config};
 
 #[derive(Debug, Serialize)]
@@ -218,12 +218,12 @@ pub async fn get_death_counts(
     let mut connection = pool.acquire().await?;
 
     let mut sql =
-        "SELECT round_id, COUNT(*) as death_count FROM death GROUP BY round_id".to_string();
+        "SELECT round_id, COUNT(*) as death_count FROM death".to_string();
 
     if current_round_id.is_some() {
         sql.push_str(" WHERE round_id < ? AND round_id >= ?");
     }
-    sql.push_str(" ORDER BY round_id DESC LIMIT ?");
+    sql.push_str(" GROUP BY round_id ORDER BY round_id DESC LIMIT ?");
 
     let mut query = sqlx::query(&sql);
 
@@ -260,12 +260,12 @@ pub async fn get_citation_counts(
     let mut connection = pool.acquire().await?;
 
     let mut sql =
-        "SELECT round_id, COUNT(*) as citation_count FROM citation GROUP BY round_id".to_string();
+        "SELECT round_id, COUNT(*) as citation_count FROM citation".to_string();
 
     if current_round_id.is_some() {
         sql.push_str(" WHERE round_id < ? AND round_id >= ?");
     }
-    sql.push_str(" ORDER BY round_id DESC LIMIT ?");
+    sql.push_str(" GROUP BY round_id ORDER BY round_id DESC LIMIT ?");
 
     let mut query = sqlx::query(&sql);
 
