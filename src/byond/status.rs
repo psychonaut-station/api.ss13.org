@@ -249,5 +249,5 @@ pub async fn get_server_status(config: &Config) -> Vec<Status> {
         *last_server_status = Some((Instant::now(), response.clone()));
     }
 
-    return response;
+    response
 }
