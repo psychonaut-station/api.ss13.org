@@ -3,11 +3,11 @@ use rocket::{get, http::Status, State};
 use crate::{database::*, Database};
 
 use super::{common::ApiKey, Json};
-use serde_json::json;
+use serde_json::{json, Value};
 
 #[get("/events/chart-data?<limit>")]
 pub async fn chart_data(
-    limit: Option<i32>,
+    limit: Option<&str>,
     database: &State<Database>,
     _api_key: ApiKey,
 ) -> Result<Json<Vec<serde_json::Value>>, Status> {
@@ -66,26 +66,32 @@ pub async fn chart_data(
 
 #[get("/events/deaths?<fetch_size>&<page>")]
 pub async fn deaths(
-    fetch_size: Option<u32>,
-    page: Option<u32>,
+    fetch_size: Option<&str>,
+    page: Option<&str>,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<Json<Vec<Death>>, Status> {
+) -> Result<Json<Value>, Status> {
     match get_deaths(fetch_size, page, &database.pool).await {
-        Ok(deaths) => Ok(Json::Ok(deaths)),
+        Ok((deaths, total_count)) => Ok(Json::Ok(json!({ 
+            "data": deaths, 
+            "total_count": total_count 
+        }))),
         Err(_) => Err(Status::InternalServerError),
     }
 }
 
 #[get("/events/citations?<fetch_size>&<page>")]
 pub async fn citations(
-    fetch_size: Option<u32>,
-    page: Option<u32>,
+    fetch_size: Option<&str>,
+    page: Option<&str>,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<Json<Vec<Citation>>, Status> {
+) -> Result<Json<Value>, Status> {
     match get_citations(fetch_size, page, &database.pool).await {
-        Ok(citations) => Ok(Json::Ok(citations)),
+        Ok((citations, total_count)) => Ok(Json::Ok(json!({ 
+            "data": citations, 
+            "total_count": total_count 
+        }))),
         Err(_) => Err(Status::InternalServerError),
     }
 }
