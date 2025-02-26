@@ -247,8 +247,7 @@ pub async fn get_death_counts(
     let current_round_id = get_round_id().await?;
     let mut connection = pool.acquire().await?;
 
-    let mut sql =
-        "SELECT round_id, COUNT(*) as death_count FROM death".to_string();
+    let mut sql = "SELECT round_id, COUNT(*) as death_count FROM death".to_string();
 
     if current_round_id.is_some() {
         sql.push_str(" WHERE round_id < ? AND round_id >= ?");
@@ -289,8 +288,7 @@ pub async fn get_citation_counts(
     let current_round_id = get_round_id().await?;
     let mut connection = pool.acquire().await?;
 
-    let mut sql =
-        "SELECT round_id, COUNT(*) as citation_count FROM citation".to_string();
+    let mut sql = "SELECT round_id, COUNT(*) as citation_count FROM citation".to_string();
 
     if current_round_id.is_some() {
         sql.push_str(" WHERE round_id < ? AND round_id >= ?");

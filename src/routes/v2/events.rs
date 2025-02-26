@@ -72,9 +72,9 @@ pub async fn deaths(
     _api_key: ApiKey,
 ) -> Result<Json<Value>, Status> {
     match get_deaths(fetch_size, page, &database.pool).await {
-        Ok((deaths, total_count)) => Ok(Json::Ok(json!({ 
-            "data": deaths, 
-            "total_count": total_count 
+        Ok((deaths, total_count)) => Ok(Json::Ok(json!({
+            "data": deaths,
+            "total_count": total_count
         }))),
         Err(_) => Err(Status::InternalServerError),
     }
@@ -88,9 +88,9 @@ pub async fn citations(
     _api_key: ApiKey,
 ) -> Result<Json<Value>, Status> {
     match get_citations(fetch_size, page, &database.pool).await {
-        Ok((citations, total_count)) => Ok(Json::Ok(json!({ 
-            "data": citations, 
-            "total_count": total_count 
+        Ok((citations, total_count)) => Ok(Json::Ok(json!({
+            "data": citations,
+            "total_count": total_count
         }))),
         Err(_) => Err(Status::InternalServerError),
     }
