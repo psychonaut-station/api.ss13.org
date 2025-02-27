@@ -21,10 +21,13 @@ pub struct Feedback {
 pub async fn get_feedback_list(
     key_name: &str,
     key_type: &str,
-    limit: Option<&str>,
+    fetch_size: Option<&str>,
+    page: Option<&str>,
     pool: &MySqlPool,
 ) -> Result<Vec<Feedback>, Error> {
-    let limit = limit.unwrap_or("100").parse::<i32>().unwrap_or(100);
+    let fetch_size = fetch_size.unwrap_or("100").parse::<i32>().unwrap_or(100);
+    let page = page.unwrap_or("1").parse::<i32>().unwrap_or(1);
+    let offset = (page - 1) * fetch_size;
 
     let current_round_id = get_round_id().await?;
     let mut connection = pool.acquire().await?;
@@ -32,19 +35,17 @@ pub async fn get_feedback_list(
     let mut sql = "SELECT datetime, round_id, key_name, key_type, json FROM feedback WHERE key_name = ? AND key_type = ?".to_string();
 
     if current_round_id.is_some() {
-        sql.push_str(" AND round_id < ? AND round_id >= ?");
+        sql.push_str(" AND round_id < ?");
     }
-    sql.push_str(" ORDER BY datetime DESC LIMIT ?");
+    sql.push_str(" ORDER BY datetime DESC LIMIT ? OFFSET ?");
 
     let mut query = sqlx::query(&sql).bind(key_name).bind(key_type);
 
     if let Some(current_round_id) = current_round_id {
-        query = query
-            .bind(current_round_id)
-            .bind(current_round_id as i32 - limit);
+        query = query.bind(current_round_id);
     }
 
-    query = query.bind(limit);
+    query = query.bind(fetch_size).bind(offset);
 
     let mut feedbacks = Vec::new();
 
@@ -240,10 +241,10 @@ pub async fn get_citations(
 }
 
 pub async fn get_death_counts(
-    limit: Option<&str>,
+    fetch_size: Option<&str>,
     pool: &MySqlPool,
 ) -> Result<HashMap<Option<u32>, i32>, Error> {
-    let limit = limit.unwrap_or("100").parse::<i32>().unwrap_or(100);
+    let fetch_size = fetch_size.unwrap_or("100").parse::<i32>().unwrap_or(100);
     let current_round_id = get_round_id().await?;
     let mut connection = pool.acquire().await?;
 
@@ -259,9 +260,9 @@ pub async fn get_death_counts(
     if let Some(current_round_id) = current_round_id {
         query = query
             .bind(current_round_id)
-            .bind(current_round_id as i32 - limit);
+            .bind(current_round_id as i32 - fetch_size);
     }
-    query = query.bind(limit);
+    query = query.bind(fetch_size);
 
     let mut death_counts = HashMap::new();
     {
@@ -281,10 +282,10 @@ pub async fn get_death_counts(
 }
 
 pub async fn get_citation_counts(
-    limit: Option<&str>,
+    fetch_size: Option<&str>,
     pool: &MySqlPool,
 ) -> Result<HashMap<Option<u32>, i32>, Error> {
-    let limit = limit.unwrap_or("100").parse::<i32>().unwrap_or(100);
+    let fetch_size = fetch_size.unwrap_or("100").parse::<i32>().unwrap_or(100);
     let current_round_id = get_round_id().await?;
     let mut connection = pool.acquire().await?;
 
@@ -300,9 +301,9 @@ pub async fn get_citation_counts(
     if let Some(current_round_id) = current_round_id {
         query = query
             .bind(current_round_id)
-            .bind(current_round_id as i32 - limit);
+            .bind(current_round_id as i32 - fetch_size);
     }
-    query = query.bind(limit);
+    query = query.bind(fetch_size);
 
     let mut citation_counts = HashMap::new();
 
@@ -323,10 +324,10 @@ pub async fn get_citation_counts(
 }
 
 pub async fn get_round_durations(
-    limit: Option<&str>,
+    fetch_size: Option<&str>,
     pool: &MySqlPool,
 ) -> Result<HashMap<i32, i64>, Error> {
-    let limit = limit.unwrap_or("100").parse::<i32>().unwrap_or(100);
+    let fetch_size = fetch_size.unwrap_or("100").parse::<i32>().unwrap_or(100);
     let current_round_id = get_round_id().await?;
     let mut connection = pool.acquire().await?;
 
@@ -342,10 +343,10 @@ pub async fn get_round_durations(
     if let Some(current_round_id) = current_round_id {
         query = query
             .bind(current_round_id)
-            .bind(current_round_id as i32 - limit);
+            .bind(current_round_id as i32 - fetch_size);
     }
 
-    query = query.bind(limit);
+    query = query.bind(fetch_size);
 
     let mut durations = HashMap::new();
 
@@ -372,10 +373,10 @@ pub async fn get_round_durations(
 }
 
 pub async fn get_player_counts(
-    limit: Option<&str>,
+    fetch_size: Option<&str>,
     pool: &MySqlPool,
 ) -> Result<HashMap<u32, i32>, Error> {
-    match get_feedback_list("round_end_stats", "nested tally", limit, pool).await {
+    match get_feedback_list("round_end_stats", "nested tally", fetch_size, None, pool).await {
         Ok(feedbacks) => {
             let mut player_counts = HashMap::new();
             for feedback in &feedbacks {
