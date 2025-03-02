@@ -124,9 +124,9 @@ pub async fn achievements(
     ckey: &str,
     database: &State<Database>,
     _api_key: ApiKey,
-) -> Result<Json<serde_json::Value>, Status> {
+) -> Result<Json<Value>, Status> {
     match get_achievements(ckey, &database.pool).await {
-        Ok(achievements) => Ok(Json::Ok(achievements)),
+        Ok(achievements) => Ok(Json::Ok(json!(achievements))),
         Err(Error::PlayerNotFound) => Err(Status::NotFound),
         Err(_) => Err(Status::InternalServerError),
     }

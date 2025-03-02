@@ -33,7 +33,7 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
             autocomplete::job,
             autocomplete::ckey,
             autocomplete::ic_name,
-            events::chart_data,
+            events::overview,
             events::citations,
             events::deaths,
         ],

@@ -2,7 +2,6 @@ use chrono::{NaiveDate, NaiveDateTime};
 use const_format::concatcp;
 use rocket::futures::StreamExt as _;
 use serde::Serialize;
-use serde_json::{json, Value};
 use sqlx::{pool::PoolConnection, Executor as _, FromRow, MySql, MySqlPool, Row as _};
 
 use super::error::Error;
@@ -362,16 +361,16 @@ pub async fn get_activity(ckey: &str, pool: &MySqlPool) -> Result<Vec<(String, i
 }
 
 #[derive(Debug, Serialize, FromRow)]
-pub struct AchievementWithMetadata {
+pub struct Achievement {
     pub achievement_key: String,
-    pub value: i32,
-    pub achievement_version: u32,
-    pub achievement_type: String,
-    pub achievement_name: String,
-    pub achievement_description: String,
+    pub achievement_version: u16,
+    pub achievement_type: Option<String>,
+    pub achievement_name: Option<String>,
+    pub achievement_description: Option<String>,
+    pub value: Option<i32>,
 }
 
-pub async fn get_achievements(ckey: &str, pool: &MySqlPool) -> Result<Value, Error> {
+pub async fn get_achievements(ckey: &str, pool: &MySqlPool) -> Result<Vec<Achievement>, Error> {
     let mut connection = pool.acquire().await?;
 
     if !player_exists(ckey, &mut connection).await {
@@ -379,16 +378,13 @@ pub async fn get_achievements(ckey: &str, pool: &MySqlPool) -> Result<Value, Err
         return Err(Error::PlayerNotFound);
     }
 
-    let query = sqlx::query_as::<_, AchievementWithMetadata>(
-       "SELECT u.achievement_key, u.value, m.achievement_version, m.achievement_type, m.achievement_name, m.achievement_description 
-        FROM achievements u 
-        JOIN achievement_metadata m ON u.achievement_key = m.achievement_key 
-        WHERE LOWER(u.ckey) = ?"
+    let query = sqlx::query_as(
+        "SELECT achievement_metadata.*, achievements.value FROM achievements JOIN achievement_metadata ON achievements.achievement_key = achievement_metadata.achievement_key WHERE LOWER(achievements.ckey) = ?"
     ).bind(ckey.to_lowercase());
 
-    let achievements: Vec<AchievementWithMetadata> = query.fetch_all(&mut *connection).await?;
+    let achievements = query.fetch_all(&mut *connection).await?;
 
     connection.close().await?;
 
-    Ok(json!(achievements))
+    Ok(achievements)
 }

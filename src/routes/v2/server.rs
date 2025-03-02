@@ -9,5 +9,7 @@ use super::Json;
 
 #[get("/server")]
 pub async fn index(config: &State<Config>) -> Json<Vec<Status>> {
-    Json::Ok(get_server_status(config).await)
+    let status = get_server_status(config).await;
+
+    Json::Ok(status)
 }

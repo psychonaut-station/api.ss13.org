@@ -196,7 +196,7 @@ static LAST_SERVER_STATUS: Lazy<Arc<RwLock<ServerStatusCache>>> =
     Lazy::new(|| Arc::new(RwLock::new(None)));
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Status(Value);
+pub struct Status(pub Value);
 
 impl Status {
     fn new(server: &Server, status: Option<ServerStatus>) -> Self {
