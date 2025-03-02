@@ -321,11 +321,11 @@ pub async fn get_citations_overview(
     Ok(citations)
 }
 
-pub async fn get_round_durations_overview(
+pub async fn get_rounds_overview(
     limit: i32,
     exclude_round: Option<i32>,
     connection: &mut PoolConnection<MySql>,
-) -> Result<HashMap<u32, i64>, Error> {
+) -> Result<HashMap<u32, (i64, NaiveDateTime)>, Error> {
     let mut sql = "SELECT id, start_datetime, end_datetime FROM round".to_string();
 
     if exclude_round.is_some() {
@@ -357,7 +357,7 @@ pub async fn get_round_durations_overview(
             if let (Some(start), Some(end)) = (start, end) {
                 let minutes = end.signed_duration_since(start).num_seconds() / 60;
 
-                durations.insert(round_id as u32, minutes);
+                durations.insert(round_id as u32, (minutes, start));
             }
         }
     }
@@ -433,6 +433,8 @@ pub async fn get_threat_overview(
 pub struct Overview {
     pub round_id: u32,
     pub duration: i64,
+    #[serde(with = "crate::serde::datetime")]
+    pub time: NaiveDateTime,
     pub deaths: i64,
     pub citations: i64,
     pub players: u32,
@@ -449,8 +451,7 @@ pub async fn get_overview(
 
     let exclude_round = get_round_id(config).await?;
 
-    let round_durations =
-        get_round_durations_overview(limit, exclude_round, &mut connection).await?;
+    let rounds = get_rounds_overview(limit, exclude_round, &mut connection).await?;
     let deaths = get_deaths_overview(limit, exclude_round, &mut connection).await?;
     let citations = get_citations_overview(limit, exclude_round, &mut connection).await?;
     let players = get_players_overview(limit, exclude_round, &mut connection).await?;
@@ -460,26 +461,27 @@ pub async fn get_overview(
 
     let mut overview = Vec::new();
 
-    for round_duration in &round_durations {
-        let round_id = round_duration.0;
-        let duration = *round_duration.1;
+    for round in &rounds {
+        let round_id = round.0;
+        let (duration, time) = *round.1;
 
         let deaths = *deaths.get(round_id).unwrap_or(&0);
         let citations = *citations.get(round_id).unwrap_or(&0);
         let players = *players.get(round_id).unwrap_or(&0);
-        let threat_level = threat_levels.get(round_id).unwrap_or(&(0, 0));
+        let (threat_level, readied_players) = *threat_levels.get(round_id).unwrap_or(&(0, 0));
 
-        let round = Overview {
+        let overview_ = Overview {
             round_id: *round_id,
             duration,
+            time,
             deaths,
             citations,
             players,
-            threat_level: threat_level.0,
-            readied_players: threat_level.1,
+            threat_level,
+            readied_players,
         };
 
-        overview.push(round);
+        overview.push(overview_);
     }
 
     Ok(overview)
