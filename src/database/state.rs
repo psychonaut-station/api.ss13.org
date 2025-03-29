@@ -12,8 +12,11 @@ pub struct Database {
 impl Database {
     pub fn new(config: &config::Database) -> Result<Self, sqlx::Error> {
         let options = MySqlPoolOptions::new()
-            .max_connections(1)
-            .idle_timeout(Duration::from_secs(30));
+            .min_connections(5)
+            .max_connections(10)
+            .acquire_timeout(Duration::from_secs(1))
+            .max_lifetime(Duration::from_secs(3))
+            .idle_timeout(Duration::from_secs(5));
 
         let url = format!(
             "mysql://{}:{}@{}:{}/{}",
