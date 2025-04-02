@@ -1,6 +1,7 @@
 use rocket::{routes, Build, Rocket};
 
 mod autocomplete;
+mod byond;
 mod common;
 mod discord;
 mod events;
@@ -30,6 +31,7 @@ pub fn mount(rocket: Rocket<Build>) -> Rocket<Build> {
             verify::unverify,
             discord::user,
             discord::member,
+            byond::member,
             autocomplete::job,
             autocomplete::ckey,
             autocomplete::ic_name,

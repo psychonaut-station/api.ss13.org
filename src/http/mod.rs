@@ -3,6 +3,7 @@ use std::sync::Arc;
 use once_cell::sync::Lazy;
 use reqwest::Client;
 
+pub mod byond;
 pub mod discord;
 mod error;
 
