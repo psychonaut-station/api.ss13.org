@@ -1,8 +1,11 @@
-use poem::{Server as PoemServer, listener::TcpListener};
+use std::sync::Arc;
+
+use poem::{EndpointExt as _, Server as PoemServer, listener::TcpListener, middleware::AddData};
 use tracing::Level;
 
 use crate::config::Config;
 
+mod byond;
 mod config;
 mod routes;
 
@@ -17,7 +20,7 @@ async fn main() -> color_eyre::Result<()> {
 
     let config = Config::read_from_file()?;
 
-    let route = routes::route(&config);
+    let route = routes::route(&config).with(AddData::new(Arc::new(config.clone())));
 
     PoemServer::new(TcpListener::bind((config.address, config.port)))
         .run(route)

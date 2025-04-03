@@ -4,7 +4,7 @@ use color_eyre::eyre::Context;
 use serde::Deserialize;
 
 #[allow(dead_code)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Config {
     pub address: IpAddr,
     pub port: u16,
@@ -20,7 +20,7 @@ pub struct Config {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Discord {
     pub token: String,
     pub guild: i64,
@@ -28,7 +28,7 @@ pub struct Discord {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Database {
     pub user: String,
     pub password: String,
@@ -38,7 +38,7 @@ pub struct Database {
 }
 
 #[allow(dead_code)]
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Server {
     pub name: String,
     pub address: String,

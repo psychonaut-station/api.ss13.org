@@ -1,9 +1,16 @@
-use poem_openapi::{OpenApi, param::Query, payload::PlainText};
+use std::sync::Arc;
+
+use poem::web::Data;
+use poem_openapi::{OpenApi, payload::Json};
+
+use crate::{byond::status::ServerStatus, config::Config};
 
 use super::BaseApi;
 
+mod server;
+
 #[derive(Default)]
-pub(crate) struct ApiV2;
+pub(super) struct ApiV2;
 
 impl BaseApi for ApiV2 {
     #[inline(always)]
@@ -29,11 +36,9 @@ impl BaseApi for ApiV2 {
 
 #[OpenApi]
 impl ApiV2 {
-    #[oai(path = "/hello", method = "get")]
-    async fn index(&self, name: Query<Option<String>>) -> PlainText<String> {
-        match name.0 {
-            Some(name) => PlainText(format!("hello, {}!", name)),
-            None => PlainText("hello!".to_string()),
-        }
+    #[inline]
+    #[oai(path = "/server", method = "get")]
+    async fn server_(&self, config: Data<&Arc<Config>>) -> Json<Vec<ServerStatus>> {
+        self.server(config).await
     }
 }
