@@ -1,26 +1,27 @@
-use poem::{Route, Server as PoemServer, listener::TcpListener};
-use poem_openapi::{OpenApi, OpenApiService, param::Query, payload::PlainText};
+use poem::{Server as PoemServer, listener::TcpListener};
+use tracing::Level;
 
-struct Api;
+use crate::config::Config;
 
-#[OpenApi]
-impl Api {
-    #[oai(path = "/hello", method = "get")]
-    async fn index(&self, name: Query<Option<String>>) -> PlainText<String> {
-        match name.0 {
-            Some(name) => PlainText(format!("hello, {}!", name)),
-            None => PlainText("hello!".to_string()),
-        }
-    }
-}
+mod config;
+mod routes;
 
 #[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
-    let api = OpenApiService::new(Api, "Hello World", "1.0").server("http://localhost:3000/api");
-    let ui = api.stoplight_elements();
-    let app = Route::new().nest("/api", api).nest("/", ui);
+async fn main() -> color_eyre::Result<()> {
+    let subscriber = tracing_subscriber::fmt();
+    #[cfg(debug_assertions)]
+    let subscriber = subscriber.with_max_level(Level::DEBUG);
+    tracing::subscriber::set_global_default(subscriber.finish())?;
 
-    PoemServer::new(TcpListener::bind("0.0.0.0:3000"))
-        .run(app)
-        .await
+    color_eyre::install()?;
+
+    let config = Config::read_from_file()?;
+
+    let route = routes::route(&config);
+
+    PoemServer::new(TcpListener::bind((config.address, config.port)))
+        .run(route)
+        .await?;
+
+    Ok(())
 }
